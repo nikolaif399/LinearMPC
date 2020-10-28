@@ -1,7 +1,7 @@
 Nu = 5; % Number of control inputs (appended gravity term)
 Nx = 6; % Number of states
-N = 40; % Time horizons to consider
-Nq = N*(Nx+1) + N*(Nu); % Toal number of decision variables
+N = 5; % Time horizons to consider
+Nq = (N+1)*Nx + N*Nu; % Toal number of decision variables
 dt = 0.1; % Time horizon
 m = 1; % Mass of drone
 
@@ -16,14 +16,8 @@ xmax = [inf; inf; inf;inf;inf;inf];
 umin = [-pi/2;-pi/2;-pi/2;-20;1];
 umax = [pi/2;pi/2;pi/2;20;1];
 
-% Refernce trajectory
-xref = cos(0.5*(0:N));
-yref = sin(0.5*(0:N));
-zref = 0.1*(0:N);
-
-dxref = zeros(1,N+1);
-dyref = zeros(1,N+1);
-dzref = zeros(1,N+1);
+stateBounds = [xmin xmax];
+controlBounds = [umin umax];
 
 % Linearized dynamics
 Ad = [1 0 0 dt 0  0;
@@ -40,35 +34,24 @@ Bd = [0 0 0 0 0;
       0 9.8*dt 0 0 0;
       0 0 0 dt/m -9.8*dt];
 
-% Quadratic cost function
-Hq = kron(eye(N),Qx);
-Hqn = Qn;
-Hu = kron(eye(N),Ru);
+% Reference trajectory
+xref = cos(0.5*(0:N));
+yref = sin(0.5*(0:N));
+zref = 0.1*(0:N);
 
-H = blkdiag(Hq,Hqn,Hu);
-
-y = [xref;yref;zref;dxref;dyref;dzref];
-y = y(:);
-fx = y'*blkdiag(kron(eye(N),Qx),Qn);
-fu = zeros(N*Nu,1);
-f = -[fx';fu];
-
-% Linearized dynamics equality constraints
-A_padded_eye = padarray(kron(eye(N), -eye(Nx,Nx)), [0 Nx],0,'pre');
-A_padded_ad = padarray(kron(eye(N),Ad),[0,Nx],0,'post');
-Aeq = [A_padded_eye + A_padded_ad, kron(eye(N),Bd)];
-beq = zeros(N*Nx,1);
-
-% Bounds
+dxref = zeros(1,N+1);
+dyref = zeros(1,N+1);
+dzref = zeros(1,N+1);  
 x0 = [xref(1);yref(1);zref(1);dxref(1);dyref(1);dzref(1)];
-Lb = [x0;repmat(xmin,N,1);repmat(umin,N,1)];
-Ub = [x0;repmat(xmax,N,1);repmat(umax,N,1)];
+refTraj = [xref;yref;zref;dxref;dyref;dzref];
 
-% No inequality constraints (control constraints specified as bounds)
-A = [];
-b = [];
+% Setup MPC object
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N);
+mpc.updateHorizonLength(N);
+mpc.setupCostFunction(refTraj);
+[H,f,A,b,Aeq,beq,lb,ub] = mpc.getQuadprogMatrices(x0,refTraj);
 
-[Qout,fval] = quadprog(H,f,A,b,Aeq,beq,Lb,Ub);
+[Qout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub);
 
 xend = Nx*(N+1);
 xout = Qout(1:Nx:xend);
