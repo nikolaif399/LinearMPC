@@ -10,6 +10,21 @@ Qx = diag([100 100 1000 1 1 1]);
 Qn = 10*Qx;
 Ru = diag([1 1 1 0.01 0]);
 
+% Bounds on states and controls
+xmin = [-inf;-inf;-inf;-inf;-inf;-inf];
+xmax = [inf; inf; inf;inf;inf;inf];
+umin = [-pi/2;-pi/2;-pi/2;-20;1];
+umax = [pi/2;pi/2;pi/2;20;1];
+
+% Refernce trajectory
+xref = cos(0.5*(0:N));
+yref = sin(0.5*(0:N));
+zref = 0.1*(0:N);
+
+dxref = zeros(1,N+1);
+dyref = zeros(1,N+1);
+dzref = zeros(1,N+1);
+
 % Linearized dynamics
 Ad = [1 0 0 dt 0  0;
       0 1 0 0  dt 0;
@@ -21,8 +36,8 @@ Ad = [1 0 0 dt 0  0;
 Bd = [0 0 0 0 0;
       0 0 0 0 0;
       0 0 0 0 0;
-      -9.8 0 0 0 0;
-      0 0 9.8 0 0;
+      -9.8*dt 0 0 0 0;
+      0 9.8*dt 0 0 0;
       0 0 0 dt/m -9.8*dt];
 
 % Quadratic cost function
@@ -31,14 +46,6 @@ Hqn = Qn;
 Hu = kron(eye(N),Ru);
 
 H = blkdiag(Hq,Hqn,Hu);
-
-xref = cos(0.5*(0:N));
-yref = sin(0.5*(0:N));
-zref = 0.1*(0:N);
-
-dxref = zeros(1,N+1);
-dyref = zeros(1,N+1);
-dzref = zeros(1,N+1);
 
 y = [xref;yref;zref;dxref;dyref;dzref];
 y = y(:);
@@ -52,12 +59,7 @@ A_padded_ad = padarray(kron(eye(N),Ad),[0,Nx],0,'post');
 Aeq = [A_padded_eye + A_padded_ad, kron(eye(N),Bd)];
 beq = zeros(N*Nx,1);
 
-% Bounds on states and controls
-xmin = [-inf;-inf;-inf;-inf;-inf;-inf];
-xmax = [inf; inf; inf;inf;inf;inf];
-umin = [-pi/2;-pi/2;-pi/2;-20;1];
-umax = [pi/2;pi/2;pi/2;20;1];
-
+% Bounds
 x0 = [xref(1);yref(1);zref(1);dxref(1);dyref(1);dzref(1)];
 Lb = [x0;repmat(xmin,N,1);repmat(umin,N,1)];
 Ub = [x0;repmat(xmax,N,1);repmat(umax,N,1)];
@@ -66,13 +68,7 @@ Ub = [x0;repmat(xmax,N,1);repmat(umax,N,1)];
 A = [];
 b = [];
 
-% Initial condition
-q_initial = []; % Include as last arg in quadprog if desired
-
-tic
 [Qout,fval] = quadprog(H,f,A,b,Aeq,beq,Lb,Ub);
-fval
-toc
 
 xend = Nx*(N+1);
 xout = Qout(1:Nx:xend);
