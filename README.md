@@ -1,4 +1,4 @@
-# Quadcopter Model Predictive Control
+# Linear Model Predictive Control
 A generic Linear Model Predictive Control library in MATLAB. 
 
 Compatible backend solvers are quadprog (OSQP and qpOASES under development)
