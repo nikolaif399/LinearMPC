@@ -9,11 +9,9 @@ Nq = (N+1)*Nx + N*Nu; % Toal number of decision variables
 dt = 0.1; % Time step
 m = 5; % Mass of drone
 g=9.81;
-k_cmd=1;
-tau = 0.01;
 
 % Weights on state deviation and control input
-Qx = diag([1000 1000 1000 1 1 1 10 10]);
+Qx = diag([1000 1000 1000 1 1 1 100 100]);
 Qn = 10*Qx;
 Ru = diag([0.1 0.1 0.01 0]);
 
@@ -43,20 +41,18 @@ Bd = [0 0 0 0;
       0 0 0 0;
       0 0 dt/m -g*dt;
       k_cmd*dt/tau 0  0  0;
-      0 k_cmd*dt/tau  0  0];
+      0 k_cmd*dt/tau 0  0];
 
 % Reference trajectory
 xref = cos(0.5*(0:N));
 yref = sin(0.5*(0:N));
 zref = 0.1*(0:N);
-phiref = zeros(1,N+1);
-thetaref = zeros(1,N+1);
 
 dxref = zeros(1,N+1);
 dyref = zeros(1,N+1);
 dzref = zeros(1,N+1);  
-x0 = [xref(1);yref(1);zref(1);dxref(1);dyref(1);dzref(1); phiref(1); thetaref(1)];
-refTraj = [xref;yref;zref;dxref;dyref;dzref; phiref; thetaref];
+x0 = [xref(1);yref(1);zref(1);dxref(1);dyref(1);dzref(1)];
+refTraj = [xref;yref;zref;dxref;dyref;dzref];
 
 % Setup MPC object
 mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N);
