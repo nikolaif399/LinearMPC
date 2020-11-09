@@ -47,8 +47,6 @@ refTraj = [xref;yref;zref;dxref;dyref;dzref];
 
 % Setup MPC object
 mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N);
-mpc.updateHorizonLength(N);
-mpc.setupCostFunction(refTraj);
 [H,f,A,b,Aeq,beq,lb,ub] = mpc.getQuadprogMatrices(x0,refTraj);
 
 [Qout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub);
