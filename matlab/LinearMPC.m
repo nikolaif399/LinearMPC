@@ -81,11 +81,23 @@ classdef LinearMPC < handle
             A = [eye(obj.Nq,obj.Nq);eye(obj.Nq,obj.Nq)];
             [lbA,ubA] = obj.getSimpleBounds();
         end
+        
+        function [A,lbA] = getSingleSidedInequalityConstraints(obj)
+            % Enforces same constraints as doubleSidedInequalityConstraints
+            % lbA <= Ax
+            
+            % Enforces state and control bounds
+            [A_double,lbA_double,ubA_double] = getDoubleSidedInequalityConstraints(obj);
+            
+            A = [A_double;-A_double];
+            lbA = [lbA_double;-ubA_double];
+            
+        end
     
         function [lb,ub] = getSimpleBounds(obj)
             % lb <= x <= ub
             
-            % Enforce state and control constraints
+            % Enforce state and control bounds
             xmin = obj.StateBounds(:,1);
             xmax = obj.StateBounds(:,2);
             umin = obj.ControlBounds(:,1);
