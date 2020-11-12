@@ -1,14 +1,16 @@
+% Linear Drone MPC example
+
+% Configurable parameters
 Nu = 5; % Number of control inputs (appended gravity term)
 Nx = 6; % Number of states
-N = 5; % Time horizons to consider
-Nq = (N+1)*Nx + N*Nu; % Toal number of decision variables
+N = 10; % Time horizons to consider
 dt = 0.1; % Time horizon
 m = 1; % Mass of drone
 
 % Weights on state deviation and control input
 Qx = diag([100 100 1000 1 1 1]);
-Qn = 10*Qx;
-Ru = diag([1 1 1 0.01 0]);
+Qn = 5*Qx;
+Ru = diag([1 1 1 1 1]);
 
 % Bounds on states and controls
 xmin = [-inf;-inf;-inf;-inf;-inf;-inf];
@@ -46,10 +48,13 @@ x0 = [xref(1);yref(1);zref(1);dxref(1);dyref(1);dzref(1)];
 refTraj = [xref;yref;zref;dxref;dyref;dzref];
 
 % Setup MPC object
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N);
-[H,f,A,b,Aeq,beq,lb,ub] = mpc.getQuadprogMatrices(x0,refTraj);
+addpath('qpOASES/interfaces/matlab')
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','qpoases');
 
-[Qout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub);
+tic
+[Qout,fval] = mpc.solve(x0,refTraj);
+toc
+
 
 xend = Nx*(N+1);
 xout = Qout(1:Nx:xend);

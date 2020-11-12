@@ -3,6 +3,7 @@ classdef LinearMPC < handle
     %qpOASES and quadprog
     
     properties
+        Solver % Solver to use 'quadprog' or 'qpoases'
         Ad % A matrix in discrete state space form
         Bd % B matrix in discrete state space form
         Q % Weight matrix on state deviation from states 0 -> N-1
@@ -15,12 +16,12 @@ classdef LinearMPC < handle
         Nu % Number of controls
         Nq % Toal number of decision variables
         
-        H % Quadratic term in cost function
-        f % Linear term in cost function
+        qpParams % Specific params for each solver
+       
     end
     
     methods
-        function obj = LinearMPC(Ad,Bd,Q,Qn,R,stateBounds,controlBounds,N)
+        function obj = LinearMPC(Ad,Bd,Q,Qn,R,stateBounds,controlBounds,N,varargin)
             %LinearMPC Construct an instance of this class
             obj.Ad = Ad;
             obj.Bd = Bd;
@@ -31,91 +32,121 @@ classdef LinearMPC < handle
             obj.ControlBounds = controlBounds;
             obj.Nx = size(Bd,1);
             obj.Nu = size(Bd,2);
-            obj.H = nan;
-            obj.f = nan;
             
             obj.updateHorizonLength(N)
+            
+            p = inputParser;
+            addParameter(p,'Solver','quadprog',@(x) obj.solverNameValid(x));
+            parse(p,varargin{:});
+            obj.Solver = p.Results.Solver;
+            fprintf('Using solver %s\n', obj.Solver);
+            
+            obj.setupSolver();
+        end
+        
+        function [] = changeSolver(obj,solver)
+            if obj.solverNameValid(solver)
+                obj.Solver = solver;
+                obj.setupSolver();
+            end
+             
+        end
+        
+        function [] = setupSolver(obj)
+            if strcmp(obj.Solver,'quadprog')
+                
+            elseif strcmp(obj.Solver,'qpoases')
+                obj.qpParams.options = qpOASES_options('mpc', ...
+                'printLevel', 3, 'maxIter', 1e8, 'maxCpuTime', 60, ...
+                'initialStatusBounds', 0);
+            end
+        end
+        
+        function valid = solverNameValid(obj,s)
+            if strcmp(s,'quadprog') || strcmp(s,'qpoases')
+                valid = true;
+            else
+                warning("Unknown solver type " + s)
+                valid = false;
+            end
         end
         
         function [] = updateHorizonLength(obj,N)
+            if N < 1
+                error("N must be greater than zero")
+            end
             obj.N = N;
             obj.Nq = (N+1)*(obj.Nx) + N*(obj.Nu);
         end
         
-        function [] = setupCostFunction(obj,ref_traj)
+        function [H,f] = getCostFunction(obj,ref_traj)
             %setupCostFunction Constructs matrix H and vector f
             %   ref_traj Nx x N matrix with desired states
             Hq = kron(eye(obj.N),obj.Q);
             Hqn = obj.Qn;
             Hu = kron(eye(obj.N),obj.R);
 
-            obj.H = blkdiag(Hq,Hqn,Hu);
+            H = blkdiag(Hq,Hqn,Hu);
             
             y = ref_traj(:);
             
             fx = y'*blkdiag(kron(eye(obj.N),obj.Q),obj.Qn);
             fu = zeros(obj.N*obj.Nu,1);
-            obj.f = -[fx';fu];
+            f = -[fx';fu];
         end
         
-        function [Aeq,beq] = getEqualityConstraints(obj,initialState)
-            % Aeq*x <= beq
-            % This enforces initial state constraints as well as dynamics
-            % constraints
-            initialState = reshape(initialState,[obj.Nx 1]);
+        function [Aeq,beq] = getDynamicsConstraint(obj)
+            % Aeq*x = beq
             
+            % Enforces dynamics constraints
             A_padded_eye = padarray(kron(eye(obj.N), -eye(obj.Nx,obj.Nx)), [0 obj.Nx],0,'pre');
             A_padded_ad = padarray(kron(eye(obj.N),obj.Ad),[0,obj.Nx],0,'post');
             
-            Adyn = [A_padded_eye + A_padded_ad, kron(eye(obj.N),obj.Bd)];
-            Ainit = eye(obj.Nx,obj.Nx);
-            Aeq = [Ainit zeros(obj.Nx,obj.Nq - obj.Nx);Adyn];
+            Aeq = [A_padded_eye + A_padded_ad, kron(eye(obj.N),obj.Bd)];
+            beq = zeros(obj.N*obj.Nx,1);
             
-            beq = [initialState;zeros(obj.N*obj.Nx,1)];
         end
         
-        function [A,lbA,ubA] = getDoubleSidedInequalityConstraints(obj)
-            % lbA <= Ax <= ubA
-            
-            % Enforces state and control constraints
-            A = [eye(obj.Nq,obj.Nq);eye(obj.Nq,obj.Nq)];
-            [lbA,ubA] = obj.getSimpleBounds();
-        end
-        
-        function [A,lbA] = getSingleSidedInequalityConstraints(obj)
-            % Enforces same constraints as doubleSidedInequalityConstraints
-            % lbA <= Ax
-            
-            % Enforces state and control bounds
-            [A_double,lbA_double,ubA_double] = getDoubleSidedInequalityConstraints(obj);
-            
-            A = [A_double;-A_double];
-            lbA = [lbA_double;-ubA_double];
-            
-        end
-    
-        function [lb,ub] = getSimpleBounds(obj)
+        function [lb,ub] = getStateControlBounds(obj, initialState)
             % lb <= x <= ub
             
-            % Enforce state and control bounds
+            % Enforce state bounds
             xmin = obj.StateBounds(:,1);
             xmax = obj.StateBounds(:,2);
+            
+            % Enforce control bounds
             umin = obj.ControlBounds(:,1);
             umax = obj.ControlBounds(:,2);
             
-            lb = [repmat(xmin,obj.N+1,1);repmat(umin,obj.N,1)];
-            ub = [repmat(xmax,obj.N+1,1);repmat(umax,obj.N,1)];
+            lb = [initialState;repmat(xmin,obj.N,1);repmat(umin,obj.N,1)];
+            ub = [initialState;repmat(xmax,obj.N,1);repmat(umax,obj.N,1)];
             
         end
-        
-        function [H,f,A,b,Aeq,beq,lb,ub] = getQuadprogMatrices(obj, initialState, refTraj)
-            obj.setupCostFunction(refTraj);
-            H = obj.H;
-            f = obj.f;
-            A = [];
-            b = [];
-            [Aeq,beq] = obj.getEqualityConstraints(initialState);
-            [lb,ub] = obj.getSimpleBounds();
+       
+        function [xout,fval] = solve(obj,initialState, refTraj)
+            [H,f] = obj.getCostFunction(refTraj);
+            
+            if strcmp(obj.Solver,'quadprog')
+                [Aeq,beq] = obj.getDynamicsConstraint();
+                [lb,ub] = obj.getStateControlBounds(initialState);
+                
+                A = [];
+                b = [];
+                [xout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub);
+                
+            elseif strcmp(obj.Solver,'qpoases')
+                [A_dyn,b_dyn] = obj.getDynamicsConstraint();
+                [lb,ub] = obj.getStateControlBounds(initialState);
+
+                % Unlifted form
+                al = b_dyn;
+                A = A_dyn;
+                au = b_dyn;
+
+                xl = lb;
+                xu = ub;
+                [xout,fval,exitflag,iter,lambda] = qpOASES(H,f,A,xl,xu,al,au,obj.qpParams.options);
+            end  
         end
         
     end
