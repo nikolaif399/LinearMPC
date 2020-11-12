@@ -1,13 +1,22 @@
 clear all;
 close all;
 
+% Set plotting parameters
+set(0, 'DefaultAxesFontSize', 24);
+set(0, 'DefaultLineMarkerSize', 10);
+set(0,'defaultfigurecolor',[1 1 1]);
+set(0,'DefaultAxesXGrid','off','DefaultAxesYGrid','off')
+set(groot,'defaulttextinterpreter','latex');
+set(groot, 'defaultAxesTickLabelInterpreter','latex');
+set(groot, 'defaultLegendInterpreter','latex');
+
 rollTruek1 = 0.0;
 rollTruek = 0.0;
 rollVelTrue = 0.0;
 gyroDriftTrue = 1.0;
 gyroCalBiasTrue = 0.01;
 gyroSigmaNoise = 0.002;
-accelSigmaNoise = sqrt(0.03);
+accelSigmaNoise = sqrt(0.05);
 
 accelMeask1 = 0.0;
 accelMeask = 0.0;
@@ -22,8 +31,8 @@ angleRollk1 = 0.0;
 angleRollk = 0.0;
 
 % Complementary filter
-k1 = 0.9;
-k2 = 0.1;
+k1 = 0.99;
+k2 = 0.01;
 
 % Kalman filter parameters
 xk = zeros(1,2);
@@ -42,13 +51,13 @@ for i = 1:endPoint
     rollVelTrue = 0.0;
     
     if(i >= 500) && (i < 750)
-        rollVelTrue = 30.0;
+        rollVelTrue = 5.0;
     end
     if(i >= 1250) && (i < 1500)
-        rollVelTrue = -40.0;
+        rollVelTrue = -10.0;
     end
     if(i >= 1750) && (i < 2000)
-        rollVelTrue = 10.0;
+        rollVelTrue = 5.0;
     end
 
 
@@ -126,15 +135,24 @@ pk = pk1;
 
 end
 
-plot(dataStore(1:endPoint,1), dataStore(1:endPoint,2), 'r', "LineWidth", 1);
+subplot(2,1,1)
+plot(dataStore(1:endPoint,1), dataStore(1:endPoint,2), '--r', "LineWidth", 2);
 hold on;
-plot(dataStore(1:endPoint,1),dataStore(1:endPoint,5), '--b', "LineWidth", 2);
-plot(dataStore(1:endPoint,1),dataStore(1:endPoint,6), '--g', "LineWidth", 2);
-
+plot(dataStore(1:endPoint,1),dataStore(1:endPoint,5), 'b', "LineWidth", 1);
+hold on;
+plot(dataStore(1:endPoint,1),dataStore(1:endPoint,6), 'k', "LineWidth", 1);
+title("Complementary Filter vs Kalman Filter Comparison")
 grid on
-axis([0 10 -15 35]);
+axis([0 10 -10 15]);
 xlabel("Time [Sec]");
 ylabel("Angle (deg)");
 legend('True', 'Comp Filter', 'KF')
 
+subplot(2,1,2)
+plot(dataStore(1:endPoint,1), abs(dataStore(1:endPoint,2)-dataStore(1:endPoint,5)), 'b', "LineWidth", 1);
+hold on 
+plot(dataStore(1:endPoint,1), abs(dataStore(1:endPoint,2)-dataStore(1:endPoint,6)), 'k', "LineWidth", 1);
+
+xlabel("Time [Sec]");
+ylabel("Error [deg]");
 
