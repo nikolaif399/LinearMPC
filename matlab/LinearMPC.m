@@ -57,7 +57,7 @@ classdef LinearMPC < handle
                 
             elseif strcmp(obj.Solver,'qpoases')
                 obj.qpParams.options = qpOASES_options('mpc', ...
-                'printLevel', 3, 'maxIter', 1e8, 'maxCpuTime', 60, ...
+                'printLevel', 0, 'maxIter', 1e8, 'maxCpuTime', 60, ...
                 'initialStatusBounds', 0);
             end
         end
@@ -132,7 +132,14 @@ classdef LinearMPC < handle
                 
                 A = [];
                 b = [];
-                [xout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub);
+                options.Algorithm = 'interior-point-convex';
+                options.Display = 'off';
+                iters = 100;
+                tic
+                for i = 1:iters
+                    [xout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],options);
+                end
+                no_hotstart = toc/iters
                 
             elseif strcmp(obj.Solver,'qpoases')
                 [A_dyn,b_dyn] = obj.getDynamicsConstraint();
@@ -145,7 +152,17 @@ classdef LinearMPC < handle
 
                 xl = lb;
                 xu = ub;
-                [xout,fval,exitflag,iter,lambda] = qpOASES(H,f,A,xl,xu,al,au,obj.qpParams.options);
+                tic
+                [QP,xout,fval,exitflag,iter,lambda] = qpOASES_sequence('i',H,f,A,xl,xu,al,au,obj.qpParams.options);
+                toc
+                
+                
+                iters = 100;
+                tic
+                for i = 1:iters
+                    [xout,fval,exitflag,iter,lambda,auxOutput] = qpOASES_sequence( 'm',QP,H,f,A,xl,xu,al,au,obj.qpParams.options);
+                end
+                with_hotstart = toc/iters
             end  
         end
         

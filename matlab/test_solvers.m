@@ -3,7 +3,7 @@
 % Configurable parameters
 Nu = 5; % Number of control inputs (appended gravity term)
 Nx = 6; % Number of states
-N = 10; % Time horizons to consider
+N = 20; % Time horizons to consider
 dt = 0.1; % Time horizon
 m = 1; % Mass of drone
 
@@ -51,9 +51,7 @@ refTraj = [xref;yref;zref;dxref;dyref;dzref];
 addpath('qpOASES/interfaces/matlab')
 mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','qpoases');
 
-tic
 [Qout,fval] = mpc.solve(x0,refTraj);
-toc
 
 
 xend = Nx*(N+1);
