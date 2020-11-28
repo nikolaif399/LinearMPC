@@ -1,2 +1,3 @@
 *.m~
 matlab/qpOASES/
+*.DS_STORE
