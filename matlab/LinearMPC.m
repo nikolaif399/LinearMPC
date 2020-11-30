@@ -87,9 +87,7 @@ classdef LinearMPC < handle
             Hu = kron(eye(obj.N),obj.R);
 
             H = blkdiag(Hq,Hqn,Hu);
-            
             y = ref_traj(:);
-            
             fx = y'*blkdiag(kron(eye(obj.N),obj.Q),obj.Qn);
             fu = zeros(obj.N*obj.Nu,1);
             f = -[fx';fu];
@@ -147,7 +145,7 @@ classdef LinearMPC < handle
 
                 xl = lb;
                 xu = ub;
-                [QP,xout,fval,exitflag,iter,lambda] = qpOASES(H,f,A,xl,xu,al,au,obj.qpParams.options);
+                [xout,fval,exitflag,iter,lambda] = qpOASES(H,f,A,xl,xu,al,au,obj.qpParams.options);
             end  
         end
         
