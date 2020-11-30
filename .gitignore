@@ -1,3 +1,4 @@
 *.m~
 matlab/qpOASES/
+matlab/osqp-matlab/
 *.DS_STORE

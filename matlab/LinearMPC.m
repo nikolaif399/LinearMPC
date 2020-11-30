@@ -3,7 +3,7 @@ classdef LinearMPC < handle
     %qpOASES and quadprog
     
     properties
-        Solver % Solver to use 'quadprog' or 'qpoases'
+        SolverName % Solver to use 'quadprog', 'qpoases','osqp'
         Ad % A matrix in discrete state space form
         Bd % B matrix in discrete state space form
         Q % Weight matrix on state deviation from states 0 -> N-1
@@ -17,7 +17,8 @@ classdef LinearMPC < handle
         Nq % Toal number of decision variables
         
         qpParams % Specific params for each solver
-       
+        Solver % solver instance to use
+        SolverInitialized % boolean flag to track if solver has been setup
     end
     
     methods
@@ -38,10 +39,12 @@ classdef LinearMPC < handle
             p = inputParser;
             addParameter(p,'Solver','quadprog',@(x) obj.solverNameValid(x));
             parse(p,varargin{:});
-            obj.Solver = p.Results.Solver;
-            fprintf('Using solver %s\n', obj.Solver);
+            obj.SolverName = p.Results.Solver;
+            fprintf('Using solver %s\n', obj.SolverName);
+            
             
             obj.setupSolver();
+            
         end
         
         function [] = changeSolver(obj,solver)
@@ -49,21 +52,28 @@ classdef LinearMPC < handle
                 obj.Solver = solver;
                 obj.setupSolver();
             end
-             
         end
         
         function [] = setupSolver(obj)
-            if strcmp(obj.Solver,'quadprog')
+            if strcmp(obj.SolverName,'quadprog')
+            
+            elseif strcmp(obj.SolverName,'osqp')
+                obj.Solver = osqp;
+                obj.qpParams = obj.Solver.default_settings();
+                obj.qpParams.eps_abs = 1e-04;
+                obj.qpParams.eps_rel = 1e-04;
+                obj.qpParams.verbose = 0;
                 
-            elseif strcmp(obj.Solver,'qpoases')
+            elseif strcmp(obj.SolverName,'qpoases')
                 obj.qpParams.options = qpOASES_options('mpc', ...
                 'printLevel', 0, 'maxIter', 1e8, 'maxCpuTime', 60, ...
                 'initialStatusBounds', 0);
             end
+            obj.SolverInitialized = false;
         end
         
         function valid = solverNameValid(obj,s)
-            if strcmp(s,'quadprog') || strcmp(s,'qpoases')
+            if strcmp(s,'quadprog') || strcmp(s,'qpoases') || strcmp(s,'osqp')
                 valid = true;
             else
                 warning("Unknown solver type " + s)
@@ -124,7 +134,7 @@ classdef LinearMPC < handle
         function [xout,fval] = solve(obj,initialState, refTraj)
             [H,f] = obj.getCostFunction(refTraj);
             
-            if strcmp(obj.Solver,'quadprog')
+            if strcmp(obj.SolverName,'quadprog')
                 [Aeq,beq] = obj.getDynamicsConstraint();
                 [lb,ub] = obj.getStateControlBounds(initialState);
                 
@@ -134,7 +144,7 @@ classdef LinearMPC < handle
                 options.Display = 'off';
                 [xout,fval] = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],options);
                 
-            elseif strcmp(obj.Solver,'qpoases')
+            elseif strcmp(obj.SolverName,'qpoases')
                 [A_dyn,b_dyn] = obj.getDynamicsConstraint();
                 [lb,ub] = obj.getStateControlBounds(initialState);
 
@@ -146,9 +156,27 @@ classdef LinearMPC < handle
                 xl = lb;
                 xu = ub;
                 [xout,fval,exitflag,iter,lambda] = qpOASES(H,f,A,xl,xu,al,au,obj.qpParams.options);
-            end  
+                
+            elseif strcmp(obj.SolverName,'osqp')
+                [A_dyn,b_dyn] = obj.getDynamicsConstraint();
+                [lb,ub] = obj.getStateControlBounds(initialState);
+                
+                A = [A_dyn;eye(length(lb))];
+                l = [b_dyn;lb];
+                u = [b_dyn;ub];
+                
+                if (~obj.SolverInitialized)
+                    obj.Solver.setup(H, f, A, l, u, obj.qpParams);
+                    obj.SolverInitialized = true;
+                else 
+                    obj.Solver.update('q',f,'l',l,'u',u); % Just update reference trajectory and state bounds
+                end
+                
+                results = obj.Solver.solve();
+                xout = results.x;
+                fval = results.info.obj_val;
+            end
         end
-        
     end
 end
 

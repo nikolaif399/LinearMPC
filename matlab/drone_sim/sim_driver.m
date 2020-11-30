@@ -1,7 +1,8 @@
 addpath('..')
 addpath('../qpOASES/interfaces/matlab')
+addpath('../osqp-matlab')
 
-vis_factor = 3; % Slows down animation by this factor, should be 1 if MPC solves in real time
+vis_factor = 2; % Slows down animation by this factor, should be 1 if MPC solves in real time
 
 N_traj = 200;
 N = 20;
@@ -48,11 +49,11 @@ Bd = [0 0 0 0;
       0 k_cmd*dt/tau  0  0];
 
 % Setup MPC object
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','qpoases');
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 % Reference Trajectory Generation
-xref = cos(0.02*(0:N_traj-1));
-yref = sin(0.02*(0:N_traj-1));
+xref = 2*cos(0.02*(0:N_traj-1));
+yref = 2*sin(0.02*(0:N_traj-1));
 zref = 0.02*(0:N_traj-1);
 rollref = zeros(size(zref));
 pitchref = zeros(size(zref));
@@ -67,20 +68,22 @@ nx = length(qCur);
 
 % Simulate
 step = 1;
-v = VideoWriter('animation.mp4','MPEG-4');
-v.FrameRate = 1/dt;
-open(v)
+%v = VideoWriter('animation.mp4','MPEG-4');
+%v.FrameRate = 1/dt;
+%open(v)
 figure
 while(step + N < N_traj)
     tic
-    %step
+
     % Get ref trajectory for next N steps
     mpcRef = refTraj(:,step:step+N);
     
     % Collect MPC Control (roll,pitch,thrust commands, all in world frame)
     [Qout,fval] = mpc.solve(qCur,mpcRef);
-    Nx = 8;
-    Nu = 4;
+    toc
+
+    Nx = mpc.Nx;
+    Nu = mpc.Nu;
     xend = Nx*(N+1);
     xout = Qout(1:Nx:xend);
     yout = Qout(2:Nx:xend);
@@ -118,7 +121,7 @@ while(step + N < N_traj)
     zlim([min(zref)-0.2 max(zref)+0.2])
     grid on
     
-    writeVideo(v,getframe(gcf));
+    %writeVideo(v,getframe(gcf));
     step = step + 1;
     tsleep = dt*vis_factor - toc;
     if (tsleep > 0)
@@ -127,7 +130,7 @@ while(step + N < N_traj)
     
 end
 
-close(v)
+%close(v)
 
 
 

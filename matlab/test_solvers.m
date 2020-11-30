@@ -49,7 +49,8 @@ refTraj = [xref;yref;zref;dxref;dyref;dzref];
 
 % Setup MPC object
 addpath('qpOASES/interfaces/matlab')
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','qpoases');
+addpath('osqp-matlab')
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 [Qout,fval] = mpc.solve(x0,refTraj);
 
