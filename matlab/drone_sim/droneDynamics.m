@@ -12,7 +12,7 @@ roll_command=u(1);pitch_command=u(2);thrust_command=u(3);
 
 % Attitude controller here, update dpitch and droll
 
-R = rotz(0)*roty(pitch_command)*rotx(roll_command); % roll and pitch in world frame so yaw irrelevant
+R = rotz(0)*roty(rad2deg(pitch_command))*rotx(rad2deg(roll_command)); % roll and pitch in world frame so yaw irrelevant
 acc = [0;0;-params.g] + R*[0;0;thrust_command/params.m];
 
 dqdt = [dx;dy;dz;acc;0;0];

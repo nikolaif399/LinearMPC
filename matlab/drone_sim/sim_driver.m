@@ -1,7 +1,7 @@
 addpath('..')
 addpath('../qpOASES/interfaces/matlab')
 
-vis_factor = 5; % Slows down animation by this factor, should be 1 if MPC solves in real time
+vis_factor = 3; % Slows down animation by this factor, should be 1 if MPC solves in real time
 
 N_traj = 200;
 N = 20;
@@ -16,7 +16,7 @@ tau = 0.01;
 
 % Weights on state deviation and control input
 Qx = diag([1000 1000 1000 1 1 1 10 10]);
-Qn = 10*Qx;
+Qn = 3*Qx;
 Ru = diag([0.1 0.1 0.01 0]);
 
 % Bounds on states and controls
@@ -57,7 +57,7 @@ zref = 0.02*(0:N_traj-1);
 rollref = zeros(size(zref));
 pitchref = zeros(size(zref));
 
-dxref = [0,diff(xref)/dt];
+dxref = [0, diff(xref)/dt];
 dyref = [0, diff(yref)/dt];
 dzref = [0, diff(zref)/dt]; 
 
@@ -67,6 +67,9 @@ nx = length(qCur);
 
 % Simulate
 step = 1;
+v = VideoWriter('animation.mp4','MPEG-4');
+v.FrameRate = 1/dt;
+open(v)
 figure
 while(step + N < N_traj)
     tic
@@ -103,18 +106,19 @@ while(step + N < N_traj)
     qCur = qNext(end,:)';
     
     % Update plots and sleep for real time animation
-    %qCur = mpcRef(1:3,1);
     plot3(mpcRef(1,:),mpcRef(2,:),mpcRef(3,:),'b')
     hold on
+    plot3(xout,yout,zout, 'g-')
     plot3(qCur(1),qCur(2),qCur(3),'r*')
     hold off
     title('Drone Trajectory')
     
-    xlim([min(xref) max(xref)])
-    ylim([min(yref) max(yref)])
-    zlim([min(zref) max(zref)])
+    xlim([min(xref)-0.2 max(xref)+0.2])
+    ylim([min(yref)-0.2 max(yref)+0.2])
+    zlim([min(zref)-0.2 max(zref)+0.2])
     grid on
     
+    writeVideo(v,getframe(gcf));
     step = step + 1;
     tsleep = dt*vis_factor - toc;
     if (tsleep > 0)
@@ -122,6 +126,8 @@ while(step + N < N_traj)
     end
     
 end
+
+close(v)
 
 
 
