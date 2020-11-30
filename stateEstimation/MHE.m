@@ -2,28 +2,32 @@ clear all;
 close all;
 clc;
 
+% Set plotting parameters
+set(0, 'DefaultAxesFontSize', 24);
+set(0, 'DefaultLineMarkerSize', 10);
+set(0,'defaultfigurecolor',[1 1 1]);
+set(0,'DefaultAxesXGrid','off','DefaultAxesYGrid','off')
+set(groot,'defaulttextinterpreter','latex');
+set(groot, 'defaultAxesTickLabelInterpreter','latex');
+set(groot, 'defaultLegendInterpreter','latex');
+
 % CasADi v3.5.5
 addpath('/Users/ardalan/casadi-osx-matlabR2015a-v3.5.5')
 import casadi.*
 
-T = 0.2; %[s]
-N = 10; % prediction horizon
+T = 0.1; %[s]
+N = 5; % prediction horizon
 rob_diam = 0.3;
 
-% v_max = 0.6; v_min = -v_max;
-% omega_max = pi/4; omega_min = -omega_max;
+v_max = 0.6; v_min = -v_max;
+omega_max = pi/4; omega_min = -omega_max;
 
-% x = SX.sym('x'); y = SX.sym('y'); theta = SX.sym('theta');
-% states = [x;y;theta]; n_states = length(states);
-x = SX.sym('x'); xdot = SX.sym('xdot'); theta = SX.sym('theta'); thetadot = SX.sym('thetadot')
-states = [x;xdot;theta;thetadot]; n_states = length(states);
+x = SX.sym('x'); y = SX.sym('y'); theta = SX.sym('theta');
+states = [x;y;theta]; n_states = length(states);
 
-
-% v = SX.sym('v'); omega = SX.sym('omega');
-% controls = [v;omega]; n_controls = length(controls);
-% rhs = [v*cos(theta);v*sin(theta);omega]; % system r.h.s
-u = SX.sym('u');
-controls = u; n_controls = length(controls);
+v = SX.sym('v'); omega = SX.sym('omega');
+controls = [v;omega]; n_controls = length(controls);
+rhs = [v*cos(theta);v*sin(theta);omega]; % system r.h.s
 
 f = Function('f',{states,controls},{rhs}); % nonlinear mapping function f(x,u)
 U = SX.sym('U',n_controls,N); % Decision variables (controls)
@@ -96,7 +100,7 @@ t(1) = t0;
 u0 = zeros(N,2);        % two control inputs for each robot
 X0 = repmat(x0,1,N+1)'; % initialization of the states decision variables
 
-sim_tim = 20; % total sampling times
+sim_tim = 30; % total sampling times
 
 % Start MPC
 mpciter = 0;
@@ -165,16 +169,6 @@ for k = 1: length(xx(1,:))-1
 end
 y_measurements = [ r , alpha ];
 
-% Plot the cartesian coordinates from the measurements used
-figure(1)
-subplot(311)
-plot(t,r.*cos(alpha),'r','linewidth',1.5); hold on
-grid on
-legend('Ground Truth','Measurement')
-subplot(312)
-plot(t,r.*sin(alpha),'r','linewidth',1.5); hold on
-grid on
-
 % plot the ground truth mesurements VS the noisy measurements
 figure(2)
 subplot(211)
@@ -198,8 +192,8 @@ y_measurements;
 
 % Let's now formulate our MHE problem
 %------------------------------------
-T = 0.2; %[s]
-N_MHE = 6; % prediction horizon
+T = 0.1; %[s]
+N_MHE = 10; % prediction horizon
 
 v_max = 0.6; v_min = -v_max;
 omega_max = pi/4; omega_min = -omega_max;
@@ -301,11 +295,11 @@ U0 = u_cl(1:N_MHE,:); % initialize the control actions by the measured
 X0(:,1:2) = [y_measurements(1:N_MHE+1,1).*cos(y_measurements(1:N_MHE+1,2)),...
     y_measurements(1:N_MHE+1,1).*sin(y_measurements(1:N_MHE+1,2))];
 
-tic
 for k = 1: size(y_measurements,1) - (N_MHE)
+    tic
     mheiter = k
     % Get the measurements window and put it as parameters in p
-    args.p   = [y_measurements(k:k+N_MHE,:)',u_cl(k:k+N_MHE-1,:)'];
+    args.p = [y_measurements(k:k+N_MHE,:)',u_cl(k:k+N_MHE-1,:)'];
     % initial value of the optimization variables
     args.x0  = [reshape(X0',3*(N_MHE+1),1);reshape(U0',2*N_MHE,1)];
     sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,...
@@ -318,17 +312,39 @@ for k = 1: size(y_measurements,1) - (N_MHE)
     % Shift trajectory to initialize the next step
     X0 = [X_sol(2:end,:);X_sol(end,:)];
     U0 = [U_sol(2:end,:);U_sol(end,:)];
+    toc
 end;
-toc
 
+
+%%
 figure(1)
-subplot(311)
+subplot(221)
 plot(t(N_MHE+1:end),X_estimate(:,1),'g','linewidth',1.5); hold on
-legend('Ground Truth','Measurement','MHE')
+% plot(t(N_MHE+1:end),X_estimate_5(:,1),'g','linewidth',1.5); hold on
+plot(t,xx(1,1:end-1),'b--','linewidth',1.5); axis([0 t(end) 0 1.8]);hold on
+% legend('Ground Truth','MHE')
+xlabel("Time[Sec]")
+ylabel("X[m]")
 
-subplot(312)
-plot(t(N_MHE+1:end),X_estimate(:,2),'g','linewidth',1.5); axis([0 t(end) 0 1.8]);hold on
+subplot(222)
+plot(t(N_MHE+1:end),X_estimate(:,2),'g','linewidth',1.5);hold on
+plot(t,xx(2,1:end-1),'b--','linewidth',1.5); axis([0 t(end) 0 1.8]);hold on
+xlabel("Time[Sec]")
+ylabel("Y[m]")
 
-subplot(313)
-plot(t(N_MHE+1:end),X_estimate(:,3),'g','linewidth',1.5); axis([0 t(end) -pi/4 pi/2]);hold on
+subplot(223)
+errX = abs(xx(1,N_MHE+1:end-1)' - X_estimate(:,1));
+errY = abs(xx(2,N_MHE+1:end-1)' - X_estimate(:,2));
+plot(errX);
+xlabel("Time[Sec]")
+ylabel("Error X[m]")
+
+subplot(224)
+plot(errY);
+xlabel("Time[Sec]")
+ylabel("Error Y[m]")
+
+suptitle("MPC-MHE on Differential Drive Kinematic Model")
+% subplot(313)
+% plot(t(N_MHE+1:end),X_estimate(:,3),'g','linewidth',1.5); axis([0 t(end) -pi/4 pi/2]);hold on
 

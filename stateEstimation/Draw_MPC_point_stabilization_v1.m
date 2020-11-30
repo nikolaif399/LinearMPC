@@ -13,8 +13,6 @@ fontsize_labels = 14;
 x_r_1 = [];
 y_r_1 = [];
 
-
-
 r = rob_diam/2;  % obstacle radius
 ang=0:0.005:2*pi;
 xp=r*cos(ang);
@@ -22,7 +20,7 @@ yp=r*sin(ang);
 
 figure(500)
 % Animate the robot motion
-%figure;%('Position',[200 200 1280 720]);
+figure;%('Position',[200 200 1280 720]);
 set(gcf,'PaperPositionMode','auto')
 set(gcf, 'Color', 'w');
 set(gcf,'Units','normalized','OuterPosition',[0 0 0.55 1]);
@@ -43,12 +41,12 @@ for k = 1:size(xx,2)
     y1_tri = [ y1+h_t*sin(th1), y1-(w_t/2)*sin((pi/2)-th1), y1+(w_t/2)*sin((pi/2)-th1)];%,y1+(h_t/3)*sin(th1)];
 
     plot(x_r_1,y_r_1,'-r','linewidth',line_width);hold on % plot exhibited trajectory
-    if k < size(xx,2) % plot prediction
-        plot(xx1(1:N,1,k),xx1(1:N,2,k),'r--*')
-    end
+%     if k < size(xx,2) % plot prediction
+%         plot(xx1(1:N,1,k),xx1(1:N,2,k),'r--*')
+%     end
     
     fill(x1_tri, y1_tri, 'r'); % plot robot position
-    plot(x1+xp,y1+yp,'--r'); % plot robot circle
+%     plot(x1+xp,y1+yp,'--r'); % plot robot circle
     
    
     hold off
@@ -66,18 +64,18 @@ for k = 1:size(xx,2)
 end
 toc
 close(gcf)
-%viobj = close(aviobj)
-%video = VideoWriter('exp.avi','Uncompressed AVI');
+% viobj = close(aviobj)
+% video = VideoWriter('exp.avi','Uncompressed AVI');
 
-% video = VideoWriter('exp.avi','Motion JPEG AVI');
-% video.FrameRate = 5;  % (frames per second) this number depends on the sampling time and the number of frames you have
-% open(video)
-% writeVideo(video,F)
-% close (video)
+video = VideoWriter('exp.avi','Motion JPEG AVI');
+video.FrameRate = 5;  % (frames per second) this number depends on the sampling time and the number of frames you have
+open(video)
+writeVideo(video,F)
+close (video)
 
 figure
 subplot(211)
-stairs(t,u_cl(:,1),'k','linewidth',1.5); axis([0 t(end) -0.35 0.75])
+stairs(t,u_cl(:,1),'b','linewidth',1.5); axis([0 t(end) -0.35 0.75])
 ylabel('v (rad/s)')
 grid on
 subplot(212)
