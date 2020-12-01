@@ -2,12 +2,9 @@ addpath('..')
 addpath('../qpOASES/interfaces/matlab')
 addpath('../osqp-matlab')
 
-vis_factor = 2; % Slows down animation by this factor, should be 1 if MPC solves in real time
-
-N_traj = 200;
 N = 20;
 dt = 0.05;
-dt_attitude = 0.01; % Attitude controller update rate
+dt_attitude = 0.002; % Attitude controller update rate
 
 % System parameters
 params.g = 9.81;
@@ -17,7 +14,7 @@ tau = 0.01;
 
 % Weights on state deviation and control input
 Qx = diag([1000 1000 1000 1 1 1 10 10]);
-Qn = 3*Qx;
+Qn = 10*Qx;
 Ru = diag([0.1 0.1 0.01 0]);
 
 % Bounds on states and controls
@@ -52,86 +49,48 @@ Bd = [0 0 0 0;
 mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 % Reference Trajectory Generation
-xref = 2*cos(0.02*(0:N_traj-1));
-yref = 2*sin(0.02*(0:N_traj-1));
-zref = 0.02*(0:N_traj-1);
-rollref = zeros(size(zref));
-pitchref = zeros(size(zref));
+refTraj = generateReference('straight',dt);
+N_traj = size(refTraj,2);
 
-dxref = [0, diff(xref)/dt];
-dyref = [0, diff(yref)/dt];
-dzref = [0, diff(zref)/dt]; 
-
-refTraj = [xref;yref;zref;dxref;dyref;dzref;rollref;pitchref];
 qCur = refTraj(:,1);
-nx = length(qCur);
+
+qCache = {};
+optCache = {};
 
 % Simulate
 step = 1;
-%v = VideoWriter('animation.mp4','MPEG-4');
-%v.FrameRate = 1/dt;
-%open(v)
-figure
-while(step + N < N_traj)
+while(step < N_traj)
     tic
 
     % Get ref trajectory for next N steps
-    mpcRef = refTraj(:,step:step+N);
+    if (step + N < N_traj)
+        mpcRef = refTraj(:,step:step+N);
+    else % If we reach the end of the trajectory, hover at final state
+        mpcRef = refTraj(:,step:end);
+        
+        lastState = mpcRef(:,end);
+        lastState(4:end) = 0; % No velocity, no orientation
+        
+        mpcRef = [mpcRef, repmat(lastState,1,N+1-size(mpcRef,2))];
+    end
     
     % Collect MPC Control (roll,pitch,thrust commands, all in world frame)
+    tic
     [Qout,fval] = mpc.solve(qCur,mpcRef);
     toc
-
-    Nx = mpc.Nx;
-    Nu = mpc.Nu;
-    xend = Nx*(N+1);
-    xout = Qout(1:Nx:xend);
-    yout = Qout(2:Nx:xend);
-    zout = Qout(3:Nx:xend);
-    dxout = Qout(4:Nx:xend);
-    dyout = Qout(5:Nx:xend);
-    dzout = Qout(6:Nx:xend);
-    rollout = Qout(7:Nx:xend);
-    pitchout = Qout(8:Nx:xend);
-
-    ustart = xend+1;
-    u1out = Qout(ustart+0:Nu:end);
-    u2out = Qout(ustart+1:Nu:end);
-    u3out = Qout(ustart+2:Nu:end);
-    u4out = Qout(ustart+3:Nu:end);
+    [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
     
-    u = [u1out(1);u2out(1);u3out(1)];
-    
-    % Simulate nonlinear drone dynamic model
-    t0 = (step-1)*dt;
-    tf = t0 + dt;
+    % Simulate with ode45
     [~,qNext] = ode45(@(t,q) droneDynamics(t,q,u,params),t0:dt_attitude:tf,qCur);
     qCur = qNext(end,:)';
     
-    % Update plots and sleep for real time animation
-    plot3(mpcRef(1,:),mpcRef(2,:),mpcRef(3,:),'b')
-    hold on
-    plot3(xout,yout,zout, 'g-')
-    plot3(qCur(1),qCur(2),qCur(3),'r*')
-    hold off
-    title('Drone Trajectory')
-    
-    xlim([min(xref)-0.2 max(xref)+0.2])
-    ylim([min(yref)-0.2 max(yref)+0.2])
-    zlim([min(zref)-0.2 max(zref)+0.2])
-    grid on
-    
-    %writeVideo(v,getframe(gcf));
+    % Store outputs and update step
+    qCache{step} = qCur;
+    optCache{step} = optTraj;
     step = step + 1;
-    tsleep = dt*vis_factor - toc;
-    if (tsleep > 0)
-        pause(tsleep)
-    end
     
 end
 
-%close(v)
-
-
+plotTrajectory(qCache,optCache,refTraj,dt,true)
 
 

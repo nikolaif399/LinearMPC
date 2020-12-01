@@ -2,3 +2,4 @@
 matlab/qpOASES/
 matlab/osqp-matlab/
 *.DS_STORE
+*.mp4
