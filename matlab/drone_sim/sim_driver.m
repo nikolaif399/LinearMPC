@@ -2,8 +2,8 @@ addpath('..')
 addpath('../qpOASES/interfaces/matlab')
 addpath('../osqp-matlab')
 
-N = 20;
-dt = 0.05;
+N = 25;
+dt = 0.04;
 dt_attitude = 0.002; % Attitude controller update rate
 
 % System parameters
@@ -81,6 +81,8 @@ while(step < N_traj)
     [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
     
     % Simulate with ode45
+    t0 = (step-1)*dt;
+    tf = t0+dt;
     [~,qNext] = ode45(@(t,q) droneDynamics(t,q,u,params),t0:dt_attitude:tf,qCur);
     qCur = qNext(end,:)';
     
@@ -91,6 +93,6 @@ while(step < N_traj)
     
 end
 
-plotTrajectory(qCache,optCache,refTraj,dt,true)
+plotTrajectory(qCache,optCache,refTraj,dt,false)
 
 
