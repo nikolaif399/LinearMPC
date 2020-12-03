@@ -2,7 +2,7 @@ addpath('..')
 addpath('../qpOASES/interfaces/matlab')
 addpath('../osqp-matlab')
 
-N = 25;
+N = 15;
 dt = 0.04;
 dt_attitude = 0.002; % Attitude controller update rate
 
