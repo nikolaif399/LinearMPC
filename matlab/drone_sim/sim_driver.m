@@ -2,26 +2,26 @@ addpath('..')
 addpath('../qpOASES/interfaces/matlab')
 addpath('../osqp-matlab')
 
-N = 15;
-dt = 0.04;
+N = 10;
+dt = 0.1;
 dt_attitude = 0.002; % Attitude controller update rate
 
 % System parameters
 params.g = 9.81;
 params.m = 5;
 k_cmd = 1;
-tau = 0.01;
+tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([1000 1000 1000 1 1 1 10 10]);
+Qx = diag([10 10 1000 1 1 1 10 10]);
 Qn = 10*Qx;
-Ru = diag([0.1 0.1 0.01 0]);
+Ru = diag([0.01 0.01 0.001 0]);
 
 % Bounds on states and controls
-xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -pi/3;-pi/3];
-xmax = [inf; inf; inf;inf;inf;inf; pi/3; pi/3];
+xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -pi/6;-pi/6];
+xmax = [inf; inf; inf;inf;inf;inf; pi/6; pi/6];
 umin = [-pi/2;-pi/2; 0.5*params.m*params.g;1];
-umax = [pi/2; pi/2; 3*params.m*params.g; 1];
+umax = [pi/2; pi/2; 2*params.m*params.g; 1];
 
 stateBounds = [xmin xmax];
 controlBounds = [umin umax];
@@ -46,7 +46,7 @@ Bd = [0 0 0 0;
       0 k_cmd*dt/tau  0  0];
 
 % Setup MPC object
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
 
 % Reference Trajectory Generation
 refTraj = generateReference('straight',dt);
