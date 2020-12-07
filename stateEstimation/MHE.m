@@ -314,8 +314,8 @@ for k = 1: size(y_measurements,1) - (N_MHE)
     U0 = [U_sol(2:end,:);U_sol(end,:)];
     toc
 end;
-
-
+%%
+save("meas.mat", "xx");
 %%
 figure(1)
 subplot(221)
