@@ -133,7 +133,7 @@ end;
 toc
 
 ss_error = norm((x0-xs),2)
-Draw_MPC_point_stabilization_v1 (t,xx,xx1,u_cl,xs,N,rob_diam)
+% Draw_MPC_point_stabilization_v1 (t,xx,xx1,u_cl,xs,N,rob_diam)
 %-----------------------------------------
 %-----------------------------------------
 %-----------------------------------------
@@ -164,8 +164,8 @@ meas_cov = diag([0.1 deg2rad(2)]).^2;
 r = [];
 alpha = [];
 for k = 1: length(xx(1,:))-1
-    r = [r; sqrt(xx(1,k)^2+xx(2,k)^2)  + sqrt(meas_cov(1,1))*randn(1)];
-    alpha = [alpha; atan(xx(2,k)/xx(1,k))      + sqrt(meas_cov(2,2))*randn(1)];
+    r = [r; sqrt(xx(1,k)^2+xx(2,k)^2) + sqrt(meas_cov(1,1))*randn(1)];
+    alpha = [alpha; atan(xx(2,k)/xx(1,k)) + sqrt(meas_cov(2,2))*randn(1)];
 end
 y_measurements = [ r , alpha ];
 
@@ -316,6 +316,7 @@ for k = 1: size(y_measurements,1) - (N_MHE)
 end;
 %%
 save("meas.mat", "xx");
+save("time.mat", "t");
 %%
 figure(1)
 subplot(221)
