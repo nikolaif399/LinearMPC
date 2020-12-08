@@ -38,7 +38,6 @@ for i = 1:N
     zlim([min(refTraj(3,:))-0.4 max(refTraj(3,:))+0.4])
     grid on
     
-    
     % Display in realtime
     tsleep = dt - toc;
     if (tsleep > 0)

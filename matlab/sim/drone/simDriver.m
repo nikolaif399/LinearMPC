@@ -1,10 +1,10 @@
-addpath('..')
-addpath('../qpOASES/interfaces/matlab')
-addpath('../osqp-matlab')
+addpath('../..')
+addpath('../../qpOASES/interfaces/matlab')
+addpath('../../osqp-matlab')
 
 N = 10;
 dt = 0.1;
-dt_attitude = 0.002; % Attitude controller update rate
+dt_attitude = 0.004; % Attitude controller update rate
 
 % System parameters
 params.g = 9.81;
@@ -49,7 +49,7 @@ Bd = [0 0 0 0;
 mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
 
 % Reference Trajectory Generation
-refTraj = generateReference('straight',dt);
+refTraj = generateReference('rising_spiral',dt);
 N_traj = size(refTraj,2);
 
 qCur = refTraj(:,1);
