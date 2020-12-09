@@ -56,7 +56,7 @@ public:
    * @param[out] lb Lower bound
    * @param[out] ub Upper bound
    */
-  void get_state_control_bounds(const Eigen::VectorXd &initial_state,
+  void get_state_control_bounds(Eigen::VectorXd initial_state,
                                 Eigen::MatrixXd &lb, Eigen::MatrixXd &ub);
 
   /**
