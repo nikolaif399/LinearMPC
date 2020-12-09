@@ -5,7 +5,7 @@
 namespace control {
 namespace mpc {
 using namespace Eigen;
-
+using namespace control::math;
 //========================================================================================
 LinearMPC::LinearMPC(const Eigen::MatrixXd &Ad, const Eigen::MatrixXd &Bd,
                      const Eigen::MatrixXd &Q, const Eigen::MatrixXd &Qn,
@@ -40,6 +40,8 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
   std::cout << "H: " << H.cols() << "," << H.rows() << std::endl;
   std::cout << "y: " << y.cols() << "," << y.rows() << std::endl;
 
+  auto tmp = kron(MatrixXd::Identity(m_N, m_N), m_Qn);
+  // auto Hd = control::math::block_diag()
   // MatrixXd fx =  * H;
   MatrixXd fu = MatrixXd::Zero(m_N * m_N, 1);
   MatrixXd f_tmp(m_Nx * (m_N + 1) + m_Nu * m_N, 1);
