@@ -14,7 +14,7 @@ TEST(TestLinearMPC, constructor) {
   // Configurable parameters
   const int Nu = 5;   // Number of control inputs (appended gravity term)
   const int Nx = 6;   // Number of states
-  const int N = 20;   // Time horizons to consider
+  const int N = 10;   // Time horizons to consider
   const int dt = 0.1; // Time horizon
   const int m = 1;    // Mass of drone
 
@@ -54,19 +54,25 @@ TEST(TestLinearMPC, constructor) {
   // Reference trajectory
   Eigen::MatrixXd ref_traj(Nx, N + 1);
   ref_traj.setZero();
-  /*ref_traj.row(0) << Eigen::VectorXd::Zero(N + 1); // xref
-  ref_traj.row(1) << Eigen::VectorXd::Zero(N + 1); // yref
-  ref_traj.row(2) << Eigen::VectorXd::Zero(N + 1); // zref
-
-  ref_traj.row(3) << Eigen::VectorXd::Zero(N + 1); // dxref
-  ref_traj.row(4) << Eigen::VectorXd::Zero(N + 1); // dyref
-  ref_traj.row(5) << Eigen::VectorXd::Zero(N + 1); // dzref*/
-  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds, N);
+  for (int i = 0; i < N + 1; i++) {
+    ref_traj(0, i) = cos(0.5 * i); // xref
+    ref_traj(1, i) = sin(0.5 * i); // yref
+    ref_traj(2, i) = 0.1 * i;      // zref
+  }
+  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds);
 
   // Test Cost Function
   Eigen::MatrixXd H;
   Eigen::MatrixXd f;
   mpc.get_cost_function(ref_traj, H, f);
+
+  // TODO eval
+  // std::cout << f << std::endl;
+
+  // Test Dynamic Constraint function
+  Eigen::MatrixXd Aeq;
+  Eigen::MatrixXd beq;
+  mpc.get_dynamics_constraint(Aeq, beq);
 }
 
 // Run all the tests that were declared with TEST()

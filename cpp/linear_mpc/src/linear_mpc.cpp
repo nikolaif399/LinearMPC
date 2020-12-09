@@ -16,7 +16,7 @@ LinearMPC::LinearMPC(const Eigen::MatrixXd &Ad, const Eigen::MatrixXd &Bd,
       m_state_bounds(state_bounds), m_control_bounds(control_bounds) {
 
   solver_.initSolver();
-  //solver_.settings()->setVerbosity(false);
+  // solver_.settings()->setVerbosity(false);
   solver_.settings()->setWarmStart(true);
 }
 
@@ -30,60 +30,87 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
 
   H = control::math::block_diag(m_Hq, m_Hqn, m_Hu);
 
-  MatrixXd y =
-      control::math::reshape(ref_traj, ref_traj.cols() * ref_traj.rows(), 1);
+  MatrixXd y = reshape(ref_traj, ref_traj.cols() * ref_traj.rows(), 1);
+  Ref<Matrix<double, 1, m_num_state_vars>> y_fixed(y);
 
-  std::cout << "H: " << H.cols() << "," << H.rows() << std::endl;
-  std::cout << "y: " << y.cols() << "," << y.rows() << std::endl;
+  MatrixXd H_tmp = block_diag(kron(MatrixXd::Identity(m_N, m_N), m_Q), m_Qn);
 
-  auto tmp = kron(MatrixXd::Identity(m_N, m_N), m_Qn);
-  // auto Hd = control::math::block_diag()
-  // MatrixXd fx =  * H;
-  MatrixXd fu = MatrixXd::Zero(m_N * m_N, 1);
+  MatrixXd fx = y_fixed * H_tmp.block<m_num_state_vars, m_num_state_vars>(0, 0);
+  MatrixXd fu = MatrixXd::Zero(m_N * m_Nu, 1);
+
   MatrixXd f_tmp(m_Nx * (m_N + 1) + m_Nu * m_N, 1);
-  // f << -fx.transpose(), -fu;
+  f_tmp << -fx.transpose(), -fu;
+
+  f = f_tmp;
 }
 
-void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &Aeq,
-                                        Eigen::MatrixXd &beq) {
+//========================================================================================
+void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &A_eq,
+                                        Eigen::MatrixXd &b_eq) {
 
+  Matrix<double, m_N * m_Nx, m_num_state_vars> A_padded_eye;
+  A_padded_eye.setZero();
+
+  A_padded_eye.block<m_N * m_Nx, m_N * m_Nx>(0, m_Nx) =
+      -MatrixXd::Identity(m_N * m_Nx, m_N * m_Nx);
+
+  Matrix<double, m_N * m_Nx, m_num_state_vars> A_padded_ad;
+  A_padded_ad.setZero();
+  for (int i = 0; i < m_N; i++) {
+    A_padded_ad.block<m_Nx, m_Nx>(i * m_Nx, i * m_Nx) = m_Ad;
+  }
+
+  Matrix<double, m_N * m_Nx, m_num_decision_vars> A_eq_;
+  A_eq_.setZero();
+  A_eq_.block<m_N * m_Nx, m_num_state_vars>(0, 0) = A_padded_eye + A_padded_ad;
+  for (int i = 0; i < m_Nx; i++) {
+    A_eq_.block<m_Nx, m_Nu>(i * m_Nx, m_num_state_vars + i * m_Nu) = m_Bd;
+  }
+
+  Matrix<double, m_num_state_vars, 1> b_eq_;
+  b_eq_.setZero();
+
+  // return matrices
+  A_eq = A_eq_;
+  b_eq = b_eq_;
 }
 
+//========================================================================================
 void LinearMPC::get_state_control_bounds(const Eigen::VectorXd &initial_state,
-                                Eigen::MatrixXd &lb, Eigen::MatrixXd &ub) {
+                                         Eigen::MatrixXd &lb,
+                                         Eigen::MatrixXd &ub) {}
 
-}
-
+//========================================================================================
 void LinearMPC::solve(const Eigen::VectorXd &initial_state,
-                      const Eigen::MatrixXd &ref_traj,
-                      Eigen::MatrixXd &x_out, double &f_val) {
+                      const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &x_out,
+                      double &f_val) {
   // Collect MPC Matrices
-  Eigen::MatrixXd H_dense,f_dynamic;
-  this->get_cost_function(ref_traj,H_dense,f_dynamic);
+  Eigen::MatrixXd H_dense, f_dynamic;
+  this->get_cost_function(ref_traj, H_dense, f_dynamic);
 
   Eigen::MatrixXd A_dyn_dense, b_dyn;
-  this->get_dynamics_constraint(A_dyn_dense,b_dyn);
+  this->get_dynamics_constraint(A_dyn_dense, b_dyn);
 
   Eigen::MatrixXd lb_dynamic, ub_dynamic; // Should be row vectors
-  this->get_state_control_bounds(initial_state,lb_dynamic,ub_dynamic);
+  this->get_state_control_bounds(initial_state, lb_dynamic, ub_dynamic);
 
   // Cast to OSQP style QP
-  Eigen::MatrixXd A_dense(A_dyn_dense.rows(),A_dyn_dense.cols() +
-                                      m_num_decision_vars);
-  A_dense << A_dyn_dense, Eigen::MatrixXd::Identity(m_num_decision_vars,
-                                                    m_num_decision_vars);
+  Eigen::MatrixXd A_dense(A_dyn_dense.rows(),
+                          A_dyn_dense.cols() + m_num_decision_vars);
+  A_dense << A_dyn_dense,
+      Eigen::MatrixXd::Identity(m_num_decision_vars, m_num_decision_vars);
 
   Eigen::SparseMatrix<double> H = H_dense.sparseView();
   Eigen::SparseMatrix<double> A = A_dense.sparseView();
-  Eigen::Matrix<double,m_num_decision_vars,1> f = f_dynamic;
+  Eigen::Matrix<double, m_num_decision_vars, 1> f = f_dynamic;
 
-  Eigen::MatrixXd lb(m_num_constraints,1);
+  Eigen::MatrixXd lb(m_num_constraints, 1);
   lb << b_dyn, lb_dynamic;
-  Eigen::Matrix<double,m_num_constraints,1> l = lb;
+  Eigen::Matrix<double, m_num_constraints, 1> l = lb;
 
-  Eigen::MatrixXd ub(m_num_constraints,1);
+  Eigen::MatrixXd ub(m_num_constraints, 1);
   ub << b_dyn, ub_dynamic;
-  Eigen::Matrix<double,m_num_constraints,1> u = ub;
+  Eigen::Matrix<double, m_num_constraints, 1> u = ub;
 
   solver_.data()->setNumberOfVariables(2);
   solver_.data()->setNumberOfConstraints(2);

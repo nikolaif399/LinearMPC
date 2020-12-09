@@ -10,8 +10,12 @@ namespace mpc {
 
 constexpr int m_N = 10;
 constexpr int m_Nx = 6;
-constexpr int m_Nu = 4;
+constexpr int m_Nu = 5;
 
+//  const int totNx = N_x*N_t, totNu = N_u*N_t, fullNx = N_x*(N_t+1);
+
+constexpr int m_num_control_vars = m_N * m_Nu;
+constexpr int m_num_state_vars = (m_N + 1) * m_Nx;
 constexpr int m_num_decision_vars = (m_N + 1) * m_Nx + m_N * m_Nu;
 constexpr int m_num_constraints = m_num_decision_vars + m_N * m_Nx;
 
