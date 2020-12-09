@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Dense>
+#include "OsqpEigen/OsqpEigen.h"
 
 namespace control {
 namespace mpc {
