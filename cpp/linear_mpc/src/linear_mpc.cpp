@@ -65,34 +65,36 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   Eigen::MatrixXd lb_dynamic, ub_dynamic; // Should be row vectors
   this->get_state_control_bounds(initial_state,lb_dynamic,ub_dynamic);
 
-  const int num_decision_vars = lb_dynamic.cols();
-
   // Cast to OSQP style QP
-  Eigen::MatrixXd A_dense(A_dyn_dense.rows(),A_dyn_dense.cols() + num_decision_vars);
-  A_dense << A_dyn_dense, Eigen::MatrixXd::Identity(num_decision_vars,
-                                                    num_decision_vars);
+  Eigen::MatrixXd A_dense(A_dyn_dense.rows(),A_dyn_dense.cols() +
+                                      m_num_decision_vars);
+  A_dense << A_dyn_dense, Eigen::MatrixXd::Identity(m_num_decision_vars,
+                                                    m_num_decision_vars);
 
   Eigen::SparseMatrix<double> H = H_dense.sparseView();
   Eigen::SparseMatrix<double> A = A_dense.sparseView();
+  Eigen::Matrix<double,m_num_decision_vars,1> f = f_dynamic;
 
-  // Getting the size on these right is going to be tough
-  Eigen::Matrix<double,12,1> f = f_dynamic;
-  Eigen::Matrix<double,12,1> lb = lb_dynamic;
-  Eigen::Matrix<double,12,1> ub = ub_dynamic;
+  Eigen::MatrixXd lb(m_num_constraints,1);
+  lb << b_dyn, lb_dynamic;
+  Eigen::Matrix<double,m_num_constraints,1> l = lb;
+
+  Eigen::MatrixXd ub(m_num_constraints,1);
+  ub << b_dyn, ub_dynamic;
+  Eigen::Matrix<double,m_num_constraints,1> u = ub;
 
   solver_.data()->setNumberOfVariables(2);
   solver_.data()->setNumberOfConstraints(2);
   solver_.data()->setHessianMatrix(H);
   solver_.data()->setGradient(f);
   solver_.data()->setLinearConstraintsMatrix(A);
-  solver_.data()->setLowerBound(lb);
-  solver_.data()->setUpperBound(ub);
+  solver_.data()->setLowerBound(l);
+  solver_.data()->setUpperBound(u);
 
   // Call solver
   solver_.solve();
   Eigen::MatrixXd qp_solution = solver_.getSolution();
 }
-
 
 } // namespace mpc
 } // namespace control
