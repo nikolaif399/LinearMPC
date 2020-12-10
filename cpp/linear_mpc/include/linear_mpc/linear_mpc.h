@@ -1,17 +1,22 @@
 #pragma once
 
-#include <Eigen/Dense>
-#include <Eigen/Core> // Ref
 #include "OsqpEigen/OsqpEigen.h"
+#include <Eigen/Core> // Ref
+#include <Eigen/Dense>
+#include <Eigen/Dense>
 
 namespace control {
 namespace mpc {
 
 constexpr int m_N = 10;
 constexpr int m_Nx = 6;
-constexpr int m_Nu = 4;
+constexpr int m_Nu = 5;
 
-constexpr int m_num_decision_vars = (m_N+1) * m_Nx + m_N * m_Nu;
+//  const int totNx = N_x*N_t, totNu = N_u*N_t, fullNx = N_x*(N_t+1);
+
+constexpr int m_num_control_vars = m_N * m_Nu;
+constexpr int m_num_state_vars = (m_N + 1) * m_Nx;
+constexpr int m_num_decision_vars = (m_N + 1) * m_Nx + m_N * m_Nu;
 constexpr int m_num_constraints = m_num_decision_vars + m_N * m_Nx;
 
 class LinearMPC {
@@ -33,18 +38,17 @@ public:
   void get_cost_function(const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &H,
                          Eigen::MatrixXd &f);
 
-    /**
-    * @brief Construct the linear equality constraint matrix Aeq and vector beq
-    * that enforce the dynamics constraints. These constraints
-    * are in the form of
-    *
-    * Aeq * x = beq
-    *
-    * @param[out] Aeq Linear equality constraint matrix
-    * @param[out] beq Linear equality constraint vector
-    */
+  /**
+  * @brief Construct the linear equality constraint matrix Aeq and vector beq
+  * that enforce the dynamics constraints. These constraints
+  * are in the form of
+  *
+  * Aeq * x = beq
+  *
+  * @param[out] Aeq Linear equality constraint matrix
+  * @param[out] beq Linear equality constraint vector
+  */
   void get_dynamics_constraint(Eigen::MatrixXd &Aeq, Eigen::MatrixXd &beq);
-
 
   /**
    * @brief Collect stacked bounds
@@ -52,7 +56,7 @@ public:
    * @param[out] lb Lower bound
    * @param[out] ub Upper bound
    */
-  void get_state_control_bounds(const Eigen::VectorXd &initial_state,
+  void get_state_control_bounds(Eigen::VectorXd initial_state,
                                 Eigen::MatrixXd &lb, Eigen::MatrixXd &ub);
 
   /**
@@ -68,9 +72,8 @@ public:
    * @param[out] f_val Cost function value
    */
   void solve(const Eigen::VectorXd &initial_state,
-             const Eigen::MatrixXd &ref_traj,
-             Eigen::MatrixXd &x_out, double &f_val);
-
+             const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &x_out,
+             double &f_val);
 
 private:
   // A matrix in discrete state space form
@@ -99,7 +102,6 @@ private:
   Eigen::MatrixXd m_Hqn;
   Eigen::MatrixXd m_Hu;
   Eigen::MatrixXd m_H;
-
 
   // OSQP solver
   OsqpEigen::Solver solver_;

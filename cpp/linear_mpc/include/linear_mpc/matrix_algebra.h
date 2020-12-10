@@ -35,6 +35,29 @@ Eigen::MatrixXd kron(const Eigen::MatrixXd &m1, const Eigen::MatrixXd &m2) {
 /**
  * @brief Create a block diagonal matrix from provided matrices 3 input version
  *
+ * @param m1 first matrix
+ * @param m2 second matrix
+ *
+ * @return Created a block diagonal matrix
+ */
+Eigen::MatrixXd block_diag(const Eigen::MatrixXd &m1,
+                           const Eigen::MatrixXd &m2) {
+
+  uint32_t m1r = m1.rows();
+  uint32_t m1c = m1.cols();
+  uint32_t m2r = m2.rows();
+  uint32_t m2c = m2.cols();
+
+  Eigen::MatrixXd mf = Eigen::MatrixXd::Zero(m1r + m2r, m1c + m2c);
+  mf.block(0, 0, m1r, m1c) = m1;
+  mf.block(m1r, m1c, m2r, m2c) = m2;
+
+  return mf;
+}
+
+/**
+ * @brief Create a block diagonal matrix from provided matrices 3 input version
+ *
  * @param[in] m1 first matrix
  * @param[in] m2 second matrix
  * @param[in] m3 third matrix

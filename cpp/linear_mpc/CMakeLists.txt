@@ -5,6 +5,8 @@ project(linear_mpc)
 add_compile_options(-std=c++11)
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ")
 
+#set(CMAKE_CXX_STANDARD 14)
+
 # --- OPTIONS ----------------------------------------
 OPTION(BUILD_TESTS "Build the unit tests" OFF)
 
@@ -18,11 +20,11 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(Eigen3 REQUIRED)
-
+find_package(OsqpEigen)
 
 # Add osqp and osqp-eigen dependencies
-add_subdirectory(ext/osqp)
-add_subdirectory(ext/osqp-eigen)
+#add_subdirectory(ext/osqp)
+#add_subdirectory(ext/osqp-eigen)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
