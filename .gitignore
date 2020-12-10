@@ -3,3 +3,5 @@ matlab/qpOASES/
 matlab/osqp-matlab/
 *.DS_STORE
 *.mp4
+cpp/linear_mpc/ext/osqp-eigen/build/
+cpp/linear_mpc/ext/osqp/build/
