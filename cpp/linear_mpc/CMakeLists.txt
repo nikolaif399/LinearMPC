@@ -100,9 +100,6 @@ add_library(linear_mpc
 )
 target_link_libraries(linear_mpc OsqpEigen::OsqpEigen)
 
-add_executable(linear_mpc_example src/linear_mpc_example.cpp)
-target_link_libraries(linear_mpc_example linear_mpc)
-
 #############
 ## Install ##
 #############

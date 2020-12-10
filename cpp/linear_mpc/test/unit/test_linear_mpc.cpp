@@ -22,7 +22,7 @@ TEST(TestLinearMPC, constructor) {
   Eigen::MatrixXd Qx(Nx, Nx);
   Qx.diagonal() << 100, 100, 1000, 1, 1, 1;
   Eigen::MatrixXd Qn = 5 * Qx;
-  Eigen::MatrixXd Ru(Nx, Nu);
+  Eigen::MatrixXd Ru(Nu, Nu);
   Ru.diagonal() << 1, 1, 1, 1, 1;
 
   // Bounds on states and controls
@@ -69,7 +69,6 @@ TEST(TestLinearMPC, constructor) {
   Eigen::MatrixXd H;
   Eigen::MatrixXd f;
   mpc.get_cost_function(ref_traj, H, f);
-
   // TODO eval
   // std::cout << f << std::endl;
 

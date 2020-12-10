@@ -14,10 +14,6 @@ LinearMPC::LinearMPC(const Eigen::MatrixXd &Ad, const Eigen::MatrixXd &Bd,
                      const Eigen::MatrixXd &control_bounds)
     : m_Ad(Ad), m_Bd(Bd), m_Q(Q), m_Qn(Qn), m_R(R),
       m_state_bounds(state_bounds), m_control_bounds(control_bounds) {
-
-  solver_.initSolver();
-  // solver_.settings()->setVerbosity(false);
-  solver_.settings()->setWarmStart(true);
 }
 
 //========================================================================================
@@ -29,7 +25,6 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
   m_Hu = control::math::kron(MatrixXd::Identity(m_N, m_N), m_R);
 
   H = control::math::block_diag(m_Hq, m_Hqn, m_Hu);
-
   Matrix<double, 1, m_num_state_vars> y;
   y.block(0, 0, 1, m_num_state_vars) =
       reshape(ref_traj, 1, ref_traj.cols() * ref_traj.rows());
@@ -110,8 +105,8 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   this->get_state_control_bounds(initial_state, lb_dynamic, ub_dynamic);
 
   // Cast to OSQP style QP
-  Eigen::MatrixXd A_dense(A_dyn_dense.rows(),
-                          A_dyn_dense.cols() + m_num_decision_vars);
+  Eigen::MatrixXd A_dense(A_dyn_dense.rows() + m_num_decision_vars,
+                          A_dyn_dense.cols());
   A_dense << A_dyn_dense,
       Eigen::MatrixXd::Identity(m_num_decision_vars, m_num_decision_vars);
 
@@ -119,22 +114,38 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   Eigen::SparseMatrix<double> A = A_dense.sparseView();
   Eigen::Matrix<double, m_num_decision_vars, 1> f = f_dynamic;
 
-  Eigen::MatrixXd lb(m_num_constraints, 1);
-  lb << b_dyn, lb_dynamic;
-  Eigen::Matrix<double, m_num_constraints, 1> l = lb;
+  Eigen::Matrix<double, m_num_constraints, 1> l;
+  l << b_dyn, lb_dynamic;
 
-  Eigen::MatrixXd ub(m_num_constraints, 1);
-  ub << b_dyn, ub_dynamic;
-  Eigen::Matrix<double, m_num_constraints, 1> u = ub;
+  Eigen::Matrix<double, m_num_constraints, 1> u;// = ub;
+  u << b_dyn, ub_dynamic;
 
-  solver_.data()->setNumberOfVariables(2);
-  solver_.data()->setNumberOfConstraints(2);
+  /*std::cout << "N: " << m_N << std::endl;
+  std::cout << "Nx: " << m_Nx << std::endl;
+  std::cout << "Nu: " << m_Nu << std::endl;
+  std::cout << "Num constraints: " << m_num_constraints << std::endl;
+  std::cout << "Num decision vars: " << m_num_decision_vars << std::endl;
+
+  std::cout << "A_dense: " << A_dense.rows() << ", " << A_dense.cols() << std::endl;
+  std::cout << "H_dense: " << H_dense.rows() << ", " << H_dense.cols() << std::endl;
+  //std::cout << "A: " << A.rows() << ", " << A.cols() << std::endl;
+  //std::cout << "H: " << H.rows() << ", " << H.cols() << std::endl;
+  */
+  solver_.data()->setNumberOfVariables(m_num_decision_vars);
+  solver_.data()->setNumberOfConstraints(m_num_constraints);
   solver_.data()->setHessianMatrix(H);
   solver_.data()->setGradient(f);
   solver_.data()->setLinearConstraintsMatrix(A);
   solver_.data()->setLowerBound(l);
   solver_.data()->setUpperBound(u);
 
+  // Init solver if not already initialized
+  if (!solver_.isInitialized())
+  {
+    std::cout << solver_.initSolver() << std::endl;
+    solver_.settings()->setVerbosity(false);
+    solver_.settings()->setWarmStart(true);
+  }
   // Call solver
   solver_.solve();
   Eigen::MatrixXd qp_solution = solver_.getSolution();
