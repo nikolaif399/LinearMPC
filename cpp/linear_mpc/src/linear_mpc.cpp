@@ -64,33 +64,29 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
 void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &A_eq,
                                         Eigen::MatrixXd &b_eq) {
 
-  Matrix<double, m_Nx_vars, m_Nx_decision> A_padded_eye;
+  Eigen::MatrixXd A_padded_eye (m_Nx_vars,m_Nx_decision);
   A_padded_eye.setZero();
 
   A_padded_eye.block<m_Nx_vars, m_Nx_vars>(0, m_Nx) =
       -MatrixXd::Identity(m_Nx_vars, m_Nx_vars);
 
-  Matrix<double, m_Nx_vars, m_Nx_decision> A_padded_ad;
+  Eigen::MatrixXd A_padded_ad (m_Nx_vars,m_Nx_decision);
   A_padded_ad.setZero();
   for (int i = 0; i < m_N; i++) {
     A_padded_ad.block<m_Nx, m_Nx>(i * m_Nx, i * m_Nx) = m_Ad;
   }
-  // std::cout << "A_padded_ad: \n" << A_padded_ad << std::endl;
 
-  Matrix<double, m_Nx_vars, m_Nq> A_eq_;
-  A_eq_.setZero();
-  A_eq_.block<m_Nx_vars, m_Nx_decision>(0, 0) = A_padded_eye + A_padded_ad;
+  A_eq.resize(m_Nx_vars,m_Nq);
+  A_eq.setZero();
+  A_eq.block<m_Nx_vars, m_Nx_decision>(0, 0) = A_padded_eye + A_padded_ad;
   for (int i = 0; i < m_N; i++) {
-    A_eq_.block<m_Nx, m_Nu>(i * m_Nx, m_Nx_decision + i * m_Nu) = m_Bd;
+    A_eq.block<m_Nx, m_Nu>(i * m_Nx, m_Nx_decision + i * m_Nu) = m_Bd;
   }
   // std::cout << "A_eq: \n" << A_eq_ << std::endl;
 
-  Matrix<double, m_Nx_vars, 1> b_eq_;
-  b_eq_.setZero();
-
   // return matrices
-  A_eq = A_eq_;
-  b_eq = b_eq_;
+  b_eq.resize(m_Nx_vars,1);
+  b_eq.setZero();
 
   /*std::cout << "[get_dynamics_constraint]" << std::endl;
   std::cout << " A_padded_eye: " << A_padded_eye.rows() << ","
@@ -201,7 +197,7 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   // Init solver if not already initialized
   if (!solver_.isInitialized()) {
     std::cout << solver_.initSolver() << std::endl;
-    solver_.settings()->setVerbosity(false);
+    solver_.settings()->setVerbosity(true);
     solver_.settings()->setWarmStart(true);
   }
   // Call solver

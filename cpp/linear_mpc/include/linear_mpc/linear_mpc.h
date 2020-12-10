@@ -8,7 +8,7 @@
 namespace control {
 namespace mpc {
 
-constexpr int m_N = 2;
+constexpr int m_N = 10;
 constexpr int m_Nx = 6;
 constexpr int m_Nu = 5;
 constexpr int m_Nq = (m_N + 1) * m_Nx + m_N * m_Nu;
