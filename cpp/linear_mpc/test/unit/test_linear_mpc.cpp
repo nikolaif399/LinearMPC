@@ -82,6 +82,11 @@ TEST(TestLinearMPC, constructor) {
   Eigen::MatrixXd lb;
   Eigen::MatrixXd ub;
   mpc.get_state_control_bounds(x0, lb, ub);
+
+  // Test solving
+  Eigen::MatrixXd x_out;
+  double f_val;
+  mpc.solve(x0, ref_traj, x_out, f_val);
 }
 
 // Run all the tests that were declared with TEST()
