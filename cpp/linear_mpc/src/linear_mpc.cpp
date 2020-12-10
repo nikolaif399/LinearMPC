@@ -143,18 +143,18 @@ void LinearMPC::get_output(const Eigen::MatrixXd &x_out,
   first_control = x_out.block<m_Nu,1>((m_N+1)*m_Nx,0);
 
   // std::cout << x_out.rows() << ", " << x_out.cols() << std::endl; // 28 x 1
-  std::cout << x_out << std::endl;
+  //std::cout << x_out << std::endl;
 
   // Collect optimized trajectory
-  for (size_t i = 0; i <= m_N+1; ++i)
+  for (size_t i = 0; i < m_N + 1; ++i)
   {
     for (size_t j = 0; j < m_Nx; ++j)
     {
       opt_traj(j,i) = x_out(i*m_Nx+j,0);
     }
   }
-  std::cout << std::endl << opt_traj << std::endl;
-  std::cout << std::endl << first_control << std::endl;
+  //std::cout << std::endl << opt_traj << std::endl;
+  //std::cout << std::endl << first_control << std::endl;
 }
 
 //========================================================================================

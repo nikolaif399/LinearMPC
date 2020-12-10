@@ -93,7 +93,7 @@ TEST(TestLinearMPC, constructor) {
   // Test extracting solution
   Eigen::MatrixXd first_control;
   Eigen::MatrixXd opt_traj;
-  mpc.get_output(x_out,first_control,opt_traj);
+  //mpc.get_output(x_out,first_control,opt_traj);
 }
 
 // Run all the tests that were declared with TEST()
