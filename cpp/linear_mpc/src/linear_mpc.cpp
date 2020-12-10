@@ -76,24 +76,9 @@ void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &A_eq,
 }
 
 //========================================================================================
-void LinearMPC::get_state_control_bounds(Eigen::VectorXd initial_state,
+void LinearMPC::get_state_control_bounds(const Eigen::VectorXd &initial_state,
                                          Eigen::MatrixXd &lb,
-                                         Eigen::MatrixXd &ub) {
-
-  Eigen::VectorXd x_min = m_state_bounds.col(0);
-  Eigen::VectorXd x_max = m_state_bounds.col(1);
-
-  Eigen::VectorXd u_min = m_control_bounds.col(0);
-  Eigen::VectorXd u_max = m_control_bounds.col(1);
-
-  Matrix<double, m_num_decision_vars, 1> lb_, ub_;
-  lb_ << initial_state, x_min.replicate(m_N, 1), u_min.replicate(m_N, 1);
-  ub_ << initial_state, x_max.replicate(m_N, 1), u_max.replicate(m_N, 1);
-
-  // Return bound vectors
-  lb = lb_;
-  ub = ub_;
-}
+                                         Eigen::MatrixXd &ub) {}
 
 //========================================================================================
 void LinearMPC::solve(const Eigen::VectorXd &initial_state,
