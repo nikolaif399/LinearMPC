@@ -19,23 +19,31 @@ LinearMPC::LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
 void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
                                   MatrixXd &f) {
 
+  // Construct H matrix
   m_Hq = control::math::kron(MatrixXd::Identity(m_N, m_N), m_Q);
   m_Hqn = m_Qn;
   m_Hu = control::math::kron(MatrixXd::Identity(m_N, m_N), m_R);
-
   H = control::math::block_diag(m_Hq, m_Hqn, m_Hu);
-  Matrix<double, 1, m_num_state_vars> y;
-  y.block(0, 0, 1, m_num_state_vars) =
+
+  // Construct fx vector
+  Matrix<double, 1, m_Nx_decision> y;
+  y.block(0, 0, 1, m_Nx_decision) =
       reshape(ref_traj, 1, ref_traj.cols() * ref_traj.rows());
   MatrixXd H_tmp = block_diag(kron(MatrixXd::Identity(m_N, m_N), m_Q), m_Qn);
-
   MatrixXd fx = y * H_tmp.block(0, 0, m_num_state_vars, m_num_state_vars);
+
+  // Construct fu vector
   MatrixXd fu = MatrixXd::Zero(m_N * m_Nu, 1);
 
-  MatrixXd f_(1, m_Nq);
-  f_ << -fx, -fu.transpose();
-
+  // Construct f vector
+  Matrix<double, m_Nq, 1> f_;
+  f_ << -fx.transpose(), -fu;
   f = f_;
+
+  /*std::cout << "H_tmp: \n" << H_tmp << std::endl;
+  std::cout << "y: \n" << y << std::endl;
+  std::cout << "fx: \n" << fx << std::endl;
+  std::cout << "f:\n" << f << std::endl;*/
 
   std::cout << "[get_cost_function]" << std::endl;
   std::cout << " Hq: " << m_Hq.rows() << "," << m_Hq.cols() << std::endl;

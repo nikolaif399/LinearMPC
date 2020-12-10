@@ -21,9 +21,11 @@ TEST(TestLinearMPC, constructor) {
 
   // Weights on state deviation and control input
   Eigen::MatrixXd Qx(Nx, Nx);
+  Qx.setZero();
   Qx.diagonal() << 100, 100, 1000, 1, 1, 1;
   Eigen::MatrixXd Qn = 5 * Qx;
   Eigen::MatrixXd Ru(Nu, Nu);
+  Ru.setZero();
   Ru.diagonal() << 1, 1, 1, 1, 1;
 
   // Bounds on states and controls
