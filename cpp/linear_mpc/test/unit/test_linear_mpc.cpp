@@ -88,7 +88,7 @@ TEST(TestLinearMPC, constructor) {
   // Test solving
   Eigen::MatrixXd x_out;
   double f_val;
-  // mpc.solve(x0, ref_traj, x_out, f_val);
+  mpc.solve(x0, ref_traj, x_out, f_val);
 }
 
 // Run all the tests that were declared with TEST()

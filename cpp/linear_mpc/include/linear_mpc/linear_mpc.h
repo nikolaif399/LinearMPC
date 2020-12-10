@@ -14,6 +14,7 @@ constexpr int m_Nu = 5;
 constexpr int m_Nq = (m_N + 1) * m_Nx + m_N * m_Nu;
 constexpr int m_Nx_vars = m_N * m_Nx;
 constexpr int m_Nx_decision = (m_N + 1) * m_Nx;
+constexpr int m_Nconst = m_Nq + m_N * m_Nx;
 //  const int totNx = N_x*N_t, totNu = N_u*N_t, fullNx = N_x*(N_t+1);
 
 constexpr int m_num_control_vars = m_N * m_Nu;

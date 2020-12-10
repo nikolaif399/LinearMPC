@@ -2,10 +2,13 @@
 #include "linear_mpc/matrix_algebra.h"
 
 #include <iostream>
+
 namespace control {
 namespace mpc {
+
 using namespace Eigen;
 using namespace control::math;
+
 //========================================================================================
 LinearMPC::LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
                      const Eigen::MatrixXd &Bd, const Eigen::MatrixXd &Q,
@@ -45,7 +48,7 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
   std::cout << "fx: \n" << fx << std::endl;
   std::cout << "f:\n" << f << std::endl;*/
 
-  std::cout << "[get_cost_function]" << std::endl;
+  /*std::cout << "[get_cost_function]" << std::endl;
   std::cout << " Hq: " << m_Hq.rows() << "," << m_Hq.cols() << std::endl;
   std::cout << " Hqn: " << m_Hqn.rows() << "," << m_Hqn.cols() << std::endl;
   std::cout << " Hu: " << m_Hu.rows() << "," << m_Hu.cols() << std::endl;
@@ -54,7 +57,7 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
   std::cout << " fx: " << fx.rows() << "," << fx.cols() << std::endl;
   std::cout << " fu: " << fu.rows() << "," << fu.cols() << std::endl;
   std::cout << " f: " << f.rows() << "," << f.cols() << std::endl;
-  std::cout << std::endl;
+  std::cout << std::endl;*/
 }
 
 //========================================================================================
@@ -89,14 +92,14 @@ void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &A_eq,
   A_eq = A_eq_;
   b_eq = b_eq_;
 
-  std::cout << "[get_dynamics_constraint]" << std::endl;
+  /*std::cout << "[get_dynamics_constraint]" << std::endl;
   std::cout << " A_padded_eye: " << A_padded_eye.rows() << ","
             << A_padded_eye.cols() << std::endl;
   std::cout << " A_padded_ad: " << A_padded_ad.rows() << ","
             << A_padded_ad.cols() << std::endl;
   std::cout << " Aeq: " << A_eq.rows() << "," << A_eq.cols() << std::endl;
   std::cout << " beq: " << b_eq.rows() << "," << b_eq.cols() << std::endl;
-  std::cout << std::endl;
+  std::cout << std::endl;*/
 }
 
 //========================================================================================
@@ -119,11 +122,10 @@ void LinearMPC::get_state_control_bounds(const Eigen::VectorXd &initial_state,
   ub = ub_;
   // std::cout << "lb: \n" << lb << std::endl;
   // std::cout << "ub: \n" << ub << std::endl;
-
-  std::cout << "[get_state_control_bounds]" << std::endl;
+  /*std::cout << "[get_state_control_bounds]" << std::endl;
   std::cout << "lb: " << lb.rows() << "," << lb.cols() << std::endl;
   std::cout << "ub: " << ub.rows() << "," << ub.cols() << std::endl;
-  std::cout << std::endl;
+  std::cout << std::endl;*/
 }
 
 //========================================================================================
@@ -141,45 +143,53 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   this->get_state_control_bounds(initial_state, lb_dynamic, ub_dynamic);
 
   // Cast to OSQP style QP
-  Eigen::MatrixXd A_dense(A_dyn_dense.rows() + m_num_decision_vars,
-                          A_dyn_dense.cols());
+  Eigen::MatrixXd A_dense(A_dyn_dense.rows() + m_Nq, A_dyn_dense.cols());
   A_dense.block(0, 0, A_dyn_dense.rows(), A_dyn_dense.cols()) = A_dyn_dense;
-  A_dense.block(A_dyn_dense.rows(), 0, m_num_decision_vars,
-                m_num_decision_vars) =
-      Eigen::MatrixXd::Identity(m_num_decision_vars, m_num_decision_vars);
-
-  /*A_dense << A_dyn_dense,
-      Eigen::MatrixXd::Identity(m_num_decision_vars, m_num_decision_vars);*/
+  A_dense.block(A_dyn_dense.rows(), 0, m_Nq, m_Nq) =
+      Eigen::MatrixXd::Identity(m_Nq, m_Nq);
 
   Eigen::SparseMatrix<double> H = H_dense.sparseView();
   Eigen::SparseMatrix<double> A = A_dense.sparseView();
-  Eigen::Matrix<double, m_num_decision_vars, 1> f = f_dynamic;
+  Eigen::Matrix<double, m_Nq, 1> f = f_dynamic;
 
-  Eigen::Matrix<double, 1, m_num_constraints> l;
-  std::cout << "b_dyn: " << b_dyn.cols() << "," << b_dyn.rows() << std::endl;
-  std::cout << "lb_dynamic: " << lb_dynamic.cols() << "," << lb_dynamic.rows()
-            << std::endl;
-  std::cout << "l: " << l.cols() << "," << l.rows() << std::endl;
-  l << b_dyn, lb_dynamic;
+  Matrix<double, m_Nx_vars + m_Nq, 1> l;
+  l.block(0, 0, b_dyn.rows(), 1) = b_dyn;
+  l.block(b_dyn.rows(), 0, lb_dynamic.rows(), 1) = lb_dynamic;
 
-  /**Eigen::Matrix<double, m_num_constraints, 1> u; // = ub;
-  u << b_dyn, ub_dynamic;
+  Matrix<double, m_Nx_vars + m_Nq, 1> u;
+  u.block(0, 0, b_dyn.rows(), 1) = b_dyn;
+  u.block(b_dyn.rows(), 0, ub_dynamic.rows(), 1) = ub_dynamic;
 
   /*std::cout << "N: " << m_N << std::endl;
   std::cout << "Nx: " << m_Nx << std::endl;
   std::cout << "Nu: " << m_Nu << std::endl;
   std::cout << "Num constraints: " << m_num_constraints << std::endl;
   std::cout << "Num decision vars: " << m_num_decision_vars << std::endl;
+  std::cout << "Nq: " << m_Nq << std::endl;
+  std::cout << "Ncost: " << m_Nconst << std::endl;*/
+  /*std::cout << "A: \n" << A_dense << std::endl;
+  std::cout << "[solve]: " << std::endl;
+  std::cout << " b_dyn: " << b_dyn.rows() << "," << b_dyn.cols() <<
+  std::endl;
+  std::cout << " lb_dynamic: " << lb_dynamic.rows() << "," <<
+  lb_dynamic.cols()
+            << std::endl;
 
-  std::cout << "A_dense: " << A_dense.rows() << ", " << A_dense.cols() <<
-  std::endl;
-  std::cout << "H_dense: " << H_dense.rows() << ", " << H_dense.cols() <<
-  std::endl;
-  //std::cout << "A: " << A.rows() << ", " << A.cols() << std::endl;
-  //std::cout << "H: " << H.rows() << ", " << H.cols() << std::endl;
-  * /
-  solver_.data()->setNumberOfVariables(m_num_decision_vars);
-  solver_.data()->setNumberOfConstraints(m_num_constraints);
+  std::cout << " A_dense: " << A_dense.rows() << "," <<
+  A_dense.cols()
+            << std::endl;
+  std::cout << " H_dense: " << H_dense.rows() << "," <<
+  H_dense.cols()
+            << std::endl;
+  std::cout << " l: " << l.cols() << "," << l.rows() << std::endl;
+  std::cout << " u: " << u.cols() << "," << u.rows() << std::endl;
+  std::cout << " A: " << A.rows() << ", " << A.cols() << std::endl;
+  std::cout << " H: " << H.rows() << ", " << H.cols() <<
+  std::endl;*/
+
+  // Set OSPQ options
+  solver_.data()->setNumberOfVariables(m_Nq);
+  solver_.data()->setNumberOfConstraints(m_Nconst);
   solver_.data()->setHessianMatrix(H);
   solver_.data()->setGradient(f);
   solver_.data()->setLinearConstraintsMatrix(A);
@@ -194,7 +204,7 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   }
   // Call solver
   solver_.solve();
-  Eigen::MatrixXd qp_solution = solver_.getSolution();*/
+  Eigen::MatrixXd qp_solution = solver_.getSolution();
 }
 
 } // namespace mpc
