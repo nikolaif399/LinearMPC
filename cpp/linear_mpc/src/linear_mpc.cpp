@@ -30,18 +30,18 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
 
   H = control::math::block_diag(m_Hq, m_Hqn, m_Hu);
 
-  MatrixXd y = reshape(ref_traj, ref_traj.cols() * ref_traj.rows(), 1);
-  Ref<Matrix<double, 1, m_num_state_vars>> y_fixed(y);
-
+  Matrix<double, 1, m_num_state_vars> y;
+  y.block(0, 0, 1, m_num_state_vars) =
+      reshape(ref_traj, 1, ref_traj.cols() * ref_traj.rows());
   MatrixXd H_tmp = block_diag(kron(MatrixXd::Identity(m_N, m_N), m_Q), m_Qn);
 
-  MatrixXd fx = y_fixed * H_tmp.block<m_num_state_vars, m_num_state_vars>(0, 0);
+  MatrixXd fx = y * H_tmp.block(0, 0, m_num_state_vars, m_num_state_vars);
   MatrixXd fu = MatrixXd::Zero(m_N * m_Nu, 1);
 
-  MatrixXd f_tmp(m_Nx * (m_N + 1) + m_Nu * m_N, 1);
-  f_tmp << -fx.transpose(), -fu;
+  MatrixXd f_(m_Nx * (m_N + 1) + m_Nu * m_N, 1);
+  f_ << -fx.transpose(), -fu;
 
-  f = f_tmp;
+  f = f_;
 }
 
 //========================================================================================

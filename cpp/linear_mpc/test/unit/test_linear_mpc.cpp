@@ -59,6 +59,9 @@ TEST(TestLinearMPC, constructor) {
     ref_traj(1, i) = sin(0.5 * i); // yref
     ref_traj(2, i) = 0.1 * i;      // zref
   }
+
+  Eigen::VectorXd x0 = ref_traj.col(0);
+
   control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds);
 
   // Test Cost Function
@@ -73,6 +76,11 @@ TEST(TestLinearMPC, constructor) {
   Eigen::MatrixXd Aeq;
   Eigen::MatrixXd beq;
   mpc.get_dynamics_constraint(Aeq, beq);
+
+  // Test solving
+  Eigen::MatrixXd x_out;
+  double f_val;
+  mpc.solve(x0, ref_traj, x_out, f_val);
 }
 
 // Run all the tests that were declared with TEST()
