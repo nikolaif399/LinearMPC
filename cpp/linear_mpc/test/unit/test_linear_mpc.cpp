@@ -12,11 +12,12 @@ const double INF = 1000000;
 TEST(TestLinearMPC, constructor) {
   // Linear Drone example+
   // Configurable parameters
-  const int Nu = 5;   // Number of control inputs (appended gravity term)
-  const int Nx = 6;   // Number of states
-  const int N = 10;   // Time horizons to consider
-  const int dt = 0.1; // Time horizon
-  const int m = 1;    // Mass of drone
+  const int Nu =
+      control::mpc::m_Nu; // Number of control inputs (appended gravity term)
+  const int Nx = control::mpc::m_Nx; // Number of states
+  const int N = control::mpc::m_N;   // Time horizons to consider
+  const double dt = 0.1;             // Time horizon
+  const int m = 1;                   // Mass of drone
 
   // Weights on state deviation and control input
   Eigen::MatrixXd Qx(Nx, Nx);
@@ -85,7 +86,7 @@ TEST(TestLinearMPC, constructor) {
   // Test solving
   Eigen::MatrixXd x_out;
   double f_val;
-  mpc.solve(x0, ref_traj, x_out, f_val);
+  // mpc.solve(x0, ref_traj, x_out, f_val);
 }
 
 // Run all the tests that were declared with TEST()

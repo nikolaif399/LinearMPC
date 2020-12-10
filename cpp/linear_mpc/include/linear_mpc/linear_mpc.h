@@ -8,10 +8,12 @@
 namespace control {
 namespace mpc {
 
-constexpr int m_N = 10;
+constexpr int m_N = 2;
 constexpr int m_Nx = 6;
 constexpr int m_Nu = 5;
-
+constexpr int m_Nq = (m_N + 1) * m_Nx + m_N * m_Nu;
+constexpr int m_Nx_vars = m_N * m_Nx;
+constexpr int m_Nx_decision = (m_N + 1) * m_Nx;
 //  const int totNx = N_x*N_t, totNu = N_u*N_t, fullNx = N_x*(N_t+1);
 
 constexpr int m_num_control_vars = m_N * m_Nu;
@@ -22,9 +24,10 @@ constexpr int m_num_constraints = m_num_decision_vars + m_N * m_Nx;
 class LinearMPC {
 
 public:
-  LinearMPC(const Eigen::MatrixXd &Ad, const Eigen::MatrixXd &Bd,
-            const Eigen::MatrixXd &Q, const Eigen::MatrixXd &Qn,
-            const Eigen::MatrixXd &R, const Eigen::MatrixXd &state_bounds,
+  LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
+            const Eigen::MatrixXd &Bd, const Eigen::MatrixXd &Q,
+            const Eigen::MatrixXd &Qn, const Eigen::MatrixXd &R,
+            const Eigen::MatrixXd &state_bounds,
             const Eigen::MatrixXd &control_bounds);
   ~LinearMPC() = default;
 
@@ -77,10 +80,10 @@ public:
 
 private:
   // A matrix in discrete state space form
-  Eigen::MatrixXd m_Ad;
+  Eigen::Matrix<double, m_Nx, m_Nx> m_Ad;
 
   // B matrix in discrete state space form
-  Eigen::MatrixXd m_Bd;
+  Eigen::Matrix<double, m_Nx, m_Nu> m_Bd;
 
   // Wieght matrix on state deviation from state 0 -> N-1
   Eigen::MatrixXd m_Q;
@@ -101,7 +104,6 @@ private:
   Eigen::MatrixXd m_Hq;
   Eigen::MatrixXd m_Hqn;
   Eigen::MatrixXd m_Hu;
-  Eigen::MatrixXd m_H;
 
   // OSQP solver
   OsqpEigen::Solver solver_;
