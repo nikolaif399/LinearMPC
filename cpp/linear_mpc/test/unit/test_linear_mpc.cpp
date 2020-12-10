@@ -60,6 +60,7 @@ TEST(TestLinearMPC, constructor) {
     ref_traj(2, i) = 0.1 * i;      // zref
   }
 
+  // Initial state
   Eigen::VectorXd x0 = ref_traj.col(0);
 
   control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds);
@@ -76,6 +77,11 @@ TEST(TestLinearMPC, constructor) {
   Eigen::MatrixXd Aeq;
   Eigen::MatrixXd beq;
   mpc.get_dynamics_constraint(Aeq, beq);
+
+  // Test state and control bounds
+  Eigen::MatrixXd lb;
+  Eigen::MatrixXd ub;
+  mpc.get_state_control_bounds(x0, lb, ub);
 
   // Test solving
   Eigen::MatrixXd x_out;
