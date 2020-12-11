@@ -4,7 +4,8 @@
 #include <iostream>
 #include <chrono>
 
-#define PRINT_TIMING // Comment to remove timing printouts
+// Comment to remove timing printouts and OSQP printing
+#define PRINT_DEBUG 
 
 namespace control {
 namespace mpc {
@@ -178,9 +179,14 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
     solver_.data()->setLinearConstraintsMatrix(A);
     solver_.data()->setLowerBound(l);
     solver_.data()->setUpperBound(u);
-    solver_.initSolver();
-    solver_.settings()->setVerbosity(true);
+    #ifdef PRINT_DEBUG
+      solver_.settings()->setVerbosity(true);
+    #else
+      solver_.settings()->setVerbosity(false);
+    #endif
     solver_.settings()->setWarmStart(true);
+    solver_.settings()->setCheckTermination(10);
+    solver_.initSolver();
   }
   else { // Update components of QP that change from iter to iter
     solver_.updateBounds(l,u);
