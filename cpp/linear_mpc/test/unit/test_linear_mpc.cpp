@@ -90,6 +90,9 @@ TEST(TestLinearMPC, constructor) {
   double f_val;
   mpc.solve(x0, ref_traj, x_out, f_val);
 
+  // Test resolving
+  mpc.solve(x0, ref_traj, x_out, f_val);
+
   // Test extracting solution
   Eigen::MatrixXd first_control;
   Eigen::MatrixXd opt_traj;

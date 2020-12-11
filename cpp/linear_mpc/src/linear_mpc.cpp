@@ -185,21 +185,24 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   u.block(0, 0, b_dyn.rows(), 1) = b_dyn;
   u.block(b_dyn.rows(), 0, ub_dynamic.rows(), 1) = ub_dynamic;
 
-  // Set OSPQ options
-  solver_.data()->setNumberOfVariables(m_Nq);
-  solver_.data()->setNumberOfConstraints(m_Nconst);
-  solver_.data()->setHessianMatrix(H);
-  solver_.data()->setGradient(f);
-  solver_.data()->setLinearConstraintsMatrix(A);
-  solver_.data()->setLowerBound(l);
-  solver_.data()->setUpperBound(u);
-
   // Init solver if not already initialized
   if (!solver_.isInitialized()) {
-    std::cout << solver_.initSolver() << std::endl;
+    solver_.data()->setNumberOfVariables(m_Nq);
+    solver_.data()->setNumberOfConstraints(m_Nconst);
+    solver_.data()->setHessianMatrix(H);
+    solver_.data()->setGradient(f);
+    solver_.data()->setLinearConstraintsMatrix(A);
+    solver_.data()->setLowerBound(l);
+    solver_.data()->setUpperBound(u);
+    solver_.initSolver();
     solver_.settings()->setVerbosity(true);
     solver_.settings()->setWarmStart(true);
   }
+  else {
+    solver_.updateBounds(l,u);
+    solver_.updateGradient(f);
+  }
+
   // Call solver
   solver_.solve();
   x_out = solver_.getSolution();
