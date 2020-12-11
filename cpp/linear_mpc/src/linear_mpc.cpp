@@ -2,12 +2,16 @@
 #include "linear_mpc/matrix_algebra.h"
 
 #include <iostream>
+#include <chrono>
+
+#define PRINT_TIMING // Comment to remove timing printouts
 
 namespace control {
 namespace mpc {
 
 using namespace Eigen;
 using namespace control::math;
+using namespace std::chrono;
 
 //========================================================================================
 LinearMPC::LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
@@ -157,6 +161,9 @@ void LinearMPC::get_output(const Eigen::MatrixXd &x_out,
 void LinearMPC::solve(const Eigen::VectorXd &initial_state,
                       const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &x_out,
                       double &f_val) {
+  #ifdef PRINT_TIMING
+    steady_clock::time_point t1 = steady_clock::now();
+  #endif
   // Collect MPC Matrices
   Eigen::MatrixXd H_dense, f_dynamic;
   this->get_cost_function(ref_traj, H_dense, f_dynamic);
@@ -185,24 +192,35 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   u.block(0, 0, b_dyn.rows(), 1) = b_dyn;
   u.block(b_dyn.rows(), 0, ub_dynamic.rows(), 1) = ub_dynamic;
 
-  // Set OSPQ options
-  solver_.data()->setNumberOfVariables(m_Nq);
-  solver_.data()->setNumberOfConstraints(m_Nconst);
-  solver_.data()->setHessianMatrix(H);
-  solver_.data()->setGradient(f);
-  solver_.data()->setLinearConstraintsMatrix(A);
-  solver_.data()->setLowerBound(l);
-  solver_.data()->setUpperBound(u);
-
   // Init solver if not already initialized
   if (!solver_.isInitialized()) {
-    std::cout << solver_.initSolver() << std::endl;
+    solver_.data()->setNumberOfVariables(m_Nq);
+    solver_.data()->setNumberOfConstraints(m_Nconst);
+    solver_.data()->setHessianMatrix(H);
+    solver_.data()->setGradient(f);
+    solver_.data()->setLinearConstraintsMatrix(A);
+    solver_.data()->setLowerBound(l);
+    solver_.data()->setUpperBound(u);
+    solver_.initSolver();
     solver_.settings()->setVerbosity(true);
     solver_.settings()->setWarmStart(true);
   }
+  else {
+    solver_.updateBounds(l,u);
+    solver_.updateGradient(f);
+  }
+
   // Call solver
   solver_.solve();
   x_out = solver_.getSolution();
+
+  #ifdef PRINT_TIMING
+    steady_clock::time_point t2 = steady_clock::now();
+    duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+    std::cout << "LinearMPC::solve completed in "
+              << time_span.count()*1000.0 << " milliseconds"
+              << std::endl;
+  #endif
 }
 
 } // namespace mpc
