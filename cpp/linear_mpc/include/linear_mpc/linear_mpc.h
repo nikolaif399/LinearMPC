@@ -8,6 +8,7 @@
 namespace control {
 namespace mpc {
 
+/*
 constexpr int m_N = 10;
 constexpr int m_Nx = 6;
 constexpr int m_Nu = 5;
@@ -21,26 +22,27 @@ constexpr int m_num_control_vars = m_N * m_Nu;
 constexpr int m_num_state_vars = (m_N + 1) * m_Nx;
 constexpr int m_num_decision_vars = (m_N + 1) * m_Nx + m_N * m_Nu;
 constexpr int m_num_constraints = m_num_decision_vars + m_N * m_Nx;
-
+*/
 class LinearMPC {
 
 public:
-  LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
+  LinearMPC(const Eigen::MatrixXd &Ad,
             const Eigen::MatrixXd &Bd, const Eigen::MatrixXd &Q,
             const Eigen::MatrixXd &Qn, const Eigen::MatrixXd &R,
             const Eigen::MatrixXd &state_bounds,
-            const Eigen::MatrixXd &control_bounds);
+            const Eigen::MatrixXd &control_bounds,
+            const int N);
   ~LinearMPC() = default;
 
   /**
    * @brief Constructs the quadratic cost function of the form
-   *
-   * @param[in] ref_traj
-   * @param[out] H
-   * @param[out] f
+   * 
+   * @param[in] ref_traj Reference trajectory
+   * @param[out] H Quadratic component of cost
+   * @param[out] f Linear component of cost
    */
   void get_cost_function(const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &H,
-                         Eigen::MatrixXd &f);
+                         Eigen::VectorXd &f);
 
   /**
   * @brief Construct the linear equality constraint matrix Aeq and vector beq
@@ -61,7 +63,7 @@ public:
    * @param[out] ub Upper bound
    */
   void get_state_control_bounds(const Eigen::VectorXd &initial_state,
-                                Eigen::MatrixXd &lb, Eigen::MatrixXd &ub);
+                                Eigen::VectorXd &lb, Eigen::VectorXd &ub);
 
   /**
    * @brief Collect first control value and all states and return them.
@@ -85,11 +87,25 @@ public:
              double &f_val);
 
 private:
+
+  int m_N;
+  int m_Nx;
+  int m_Nu;
+
+  int m_Nq;
+  int m_Nx_vars;
+  int m_Nx_decision;
+  int m_Nconst;
+  int m_num_control_vars;
+  int m_num_state_vars;
+  int m_num_decision_vars;
+  int m_num_constraints;
+
   // A matrix in discrete state space form
-  Eigen::Matrix<double, m_Nx, m_Nx> m_Ad;
+  Eigen::MatrixXd m_Ad;
 
   // B matrix in discrete state space form
-  Eigen::Matrix<double, m_Nx, m_Nu> m_Bd;
+  Eigen::MatrixXd m_Bd;
 
   // Wieght matrix on state deviation from state 0 -> N-1
   Eigen::MatrixXd m_Q;

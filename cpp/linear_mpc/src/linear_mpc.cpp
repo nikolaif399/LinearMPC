@@ -4,7 +4,8 @@
 #include <iostream>
 #include <chrono>
 
-#define PRINT_TIMING // Comment to remove timing printouts
+// Comment to remove timing printouts and OSQP printing
+#define PRINT_DEBUG 
 
 namespace control {
 namespace mpc {
@@ -14,17 +15,29 @@ using namespace control::math;
 using namespace std::chrono;
 
 //========================================================================================
-LinearMPC::LinearMPC(const Eigen::Matrix<double, m_Nx, m_Nx> &Ad,
+LinearMPC::LinearMPC(const Eigen::MatrixXd &Ad,
                      const Eigen::MatrixXd &Bd, const Eigen::MatrixXd &Q,
                      const Eigen::MatrixXd &Qn, const Eigen::MatrixXd &R,
                      const Eigen::MatrixXd &state_bounds,
-                     const Eigen::MatrixXd &control_bounds)
+                     const Eigen::MatrixXd &control_bounds,const int N)
     : m_Ad(Ad), m_Bd(Bd), m_Q(Q), m_Qn(Qn), m_R(R),
-      m_state_bounds(state_bounds), m_control_bounds(control_bounds) {}
+      m_state_bounds(state_bounds), m_control_bounds(control_bounds), m_N(N) {
+        m_Nx = Ad.rows();
+        m_Nu = Bd.cols();
+
+        m_Nq = (m_N + 1) * m_Nx + m_N * m_Nu;
+        m_Nx_vars = m_N * m_Nx;
+        m_Nx_decision = (m_N + 1) * m_Nx;
+        m_Nconst = m_Nq + m_N * m_Nx;
+        m_num_control_vars = m_N * m_Nu;
+        m_num_state_vars = (m_N + 1) * m_Nx;
+        m_num_decision_vars = (m_N + 1) * m_Nx + m_N * m_Nu;
+        m_num_constraints = m_num_decision_vars + m_N * m_Nx;
+      }
 
 //========================================================================================
-void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
-                                  MatrixXd &f) {
+void LinearMPC::get_cost_function(const Eigen::MatrixXd &ref_traj, Eigen::MatrixXd &H,
+                                  Eigen::VectorXd &f) {
 
   // Construct H matrix
   m_Hq = control::math::kron(MatrixXd::Identity(m_N, m_N), m_Q);
@@ -33,35 +46,19 @@ void LinearMPC::get_cost_function(const MatrixXd &ref_traj, MatrixXd &H,
   H = control::math::block_diag(m_Hq, m_Hqn, m_Hu);
 
   // Construct fx vector
-  Matrix<double, 1, m_Nx_decision> y;
+  Eigen::MatrixXd y(1,m_Nx_decision);
   y.block(0, 0, 1, m_Nx_decision) =
       reshape(ref_traj, 1, ref_traj.cols() * ref_traj.rows());
-  MatrixXd H_tmp = block_diag(kron(MatrixXd::Identity(m_N, m_N), m_Q), m_Qn);
-  MatrixXd fx = y * H_tmp.block(0, 0, m_num_state_vars, m_num_state_vars);
+  Eigen::MatrixXd H_tmp = block_diag(kron(MatrixXd::Identity(m_N, m_N), m_Q), m_Qn);
+  Eigen::MatrixXd fx = y * H_tmp.block(0, 0, m_num_state_vars, m_num_state_vars);
 
   // Construct fu vector
-  MatrixXd fu = MatrixXd::Zero(m_N * m_Nu, 1);
+  Eigen::MatrixXd fu = MatrixXd::Zero(m_N * m_Nu, 1);
 
   // Construct f vector
-  Matrix<double, m_Nq, 1> f_;
-  f_ << -fx.transpose(), -fu;
-  f = f_;
-
-  /*std::cout << "H_tmp: \n" << H_tmp << std::endl;
-  std::cout << "y: \n" << y << std::endl;
-  std::cout << "fx: \n" << fx << std::endl;
-  std::cout << "f:\n" << f << std::endl;*/
-
-  /*std::cout << "[get_cost_function]" << std::endl;
-  std::cout << " Hq: " << m_Hq.rows() << "," << m_Hq.cols() << std::endl;
-  std::cout << " Hqn: " << m_Hqn.rows() << "," << m_Hqn.cols() << std::endl;
-  std::cout << " Hu: " << m_Hu.rows() << "," << m_Hu.cols() << std::endl;
-  std::cout << " H: " << H.rows() << "," << H.cols() << std::endl;
-  std::cout << " y: " << y.rows() << "," << y.cols() << std::endl;
-  std::cout << " fx: " << fx.rows() << "," << fx.cols() << std::endl;
-  std::cout << " fu: " << fu.rows() << "," << fu.cols() << std::endl;
-  std::cout << " f: " << f.rows() << "," << f.cols() << std::endl;
-  std::cout << std::endl;*/
+  f.resize(m_Nq);
+  f.setZero();
+  f << -fx.transpose(), -fu;
 }
 
 //========================================================================================
@@ -71,41 +68,31 @@ void LinearMPC::get_dynamics_constraint(Eigen::MatrixXd &A_eq,
   Eigen::MatrixXd A_padded_eye (m_Nx_vars,m_Nx_decision);
   A_padded_eye.setZero();
 
-  A_padded_eye.block<m_Nx_vars, m_Nx_vars>(0, m_Nx) =
+  A_padded_eye.block(0, m_Nx,m_Nx_vars, m_Nx_vars) =
       -MatrixXd::Identity(m_Nx_vars, m_Nx_vars);
 
-  Eigen::MatrixXd A_padded_ad (m_Nx_vars,m_Nx_decision);
+  Eigen::MatrixXd A_padded_ad(m_Nx_vars,m_Nx_decision);
   A_padded_ad.setZero();
   for (int i = 0; i < m_N; i++) {
-    A_padded_ad.block<m_Nx, m_Nx>(i * m_Nx, i * m_Nx) = m_Ad;
+    A_padded_ad.block(i * m_Nx, i * m_Nx, m_Nx, m_Nx) = m_Ad;
   }
 
   A_eq.resize(m_Nx_vars,m_Nq);
   A_eq.setZero();
-  A_eq.block<m_Nx_vars, m_Nx_decision>(0, 0) = A_padded_eye + A_padded_ad;
+  A_eq.block(0, 0, m_Nx_vars, m_Nx_decision) = A_padded_eye + A_padded_ad;
   for (int i = 0; i < m_N; i++) {
-    A_eq.block<m_Nx, m_Nu>(i * m_Nx, m_Nx_decision + i * m_Nu) = m_Bd;
+    A_eq.block(i * m_Nx, m_Nx_decision + i * m_Nu, m_Nx, m_Nu) = m_Bd;
   }
-  // std::cout << "A_eq: \n" << A_eq_ << std::endl;
 
   // return matrices
   b_eq.resize(m_Nx_vars,1);
   b_eq.setZero();
-
-  /*std::cout << "[get_dynamics_constraint]" << std::endl;
-  std::cout << " A_padded_eye: " << A_padded_eye.rows() << ","
-            << A_padded_eye.cols() << std::endl;
-  std::cout << " A_padded_ad: " << A_padded_ad.rows() << ","
-            << A_padded_ad.cols() << std::endl;
-  std::cout << " Aeq: " << A_eq.rows() << "," << A_eq.cols() << std::endl;
-  std::cout << " beq: " << b_eq.rows() << "," << b_eq.cols() << std::endl;
-  std::cout << std::endl;*/
 }
 
 //========================================================================================
 void LinearMPC::get_state_control_bounds(const Eigen::VectorXd &initial_state,
-                                         Eigen::MatrixXd &lb,
-                                         Eigen::MatrixXd &ub) {
+                                         Eigen::VectorXd &lb,
+                                         Eigen::VectorXd &ub) {
 
   Eigen::VectorXd x_min = m_state_bounds.col(0);
   Eigen::VectorXd x_max = m_state_bounds.col(1);
@@ -113,19 +100,14 @@ void LinearMPC::get_state_control_bounds(const Eigen::VectorXd &initial_state,
   Eigen::VectorXd u_min = m_control_bounds.col(0);
   Eigen::VectorXd u_max = m_control_bounds.col(1);
 
-  Matrix<double, m_num_decision_vars, 1> lb_, ub_;
-  lb_ << initial_state, x_min.replicate(m_N, 1), u_min.replicate(m_N, 1);
-  ub_ << initial_state, x_max.replicate(m_N, 1), u_max.replicate(m_N, 1);
+  //Eigen::MatrixXd<double, m_num_decision_vars, 1> lb_, ub_;
+  lb.resize(m_num_decision_vars);
+  lb.setZero();
+  ub.resize(m_num_decision_vars);
+  ub.setZero();
 
-  // Return bound vectors
-  lb = lb_;
-  ub = ub_;
-  // std::cout << "lb: \n" << lb << std::endl;
-  // std::cout << "ub: \n" << ub << std::endl;
-  /*std::cout << "[get_state_control_bounds]" << std::endl;
-  std::cout << "lb: " << lb.rows() << "," << lb.cols() << std::endl;
-  std::cout << "ub: " << ub.rows() << "," << ub.cols() << std::endl;
-  std::cout << std::endl;*/
+  lb << initial_state, x_min.replicate(m_N, 1), u_min.replicate(m_N, 1);
+  ub << initial_state, x_max.replicate(m_N, 1), u_max.replicate(m_N, 1);
 }
 
 //========================================================================================
@@ -140,10 +122,7 @@ void LinearMPC::get_output(const Eigen::MatrixXd &x_out,
   opt_traj.setZero();
 
   // Collect optimized control
-  first_control = x_out.block<m_Nu,1>((m_N+1)*m_Nx,0);
-
-  // std::cout << x_out.rows() << ", " << x_out.cols() << std::endl; // 28 x 1
-  //std::cout << x_out << std::endl;
+  first_control = x_out.block((m_N+1)*m_Nx,0,m_Nu,1);
 
   // Collect optimized trajectory
   for (size_t i = 0; i < m_N + 1; ++i)
@@ -153,8 +132,6 @@ void LinearMPC::get_output(const Eigen::MatrixXd &x_out,
       opt_traj(j,i) = x_out(i*m_Nx+j,0);
     }
   }
-  //std::cout << std::endl << opt_traj << std::endl;
-  //std::cout << std::endl << first_control << std::endl;
 }
 
 //========================================================================================
@@ -164,15 +141,17 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
   #ifdef PRINT_TIMING
     steady_clock::time_point t1 = steady_clock::now();
   #endif
+
   // Collect MPC Matrices
-  Eigen::MatrixXd H_dense, f_dynamic;
-  this->get_cost_function(ref_traj, H_dense, f_dynamic);
+  Eigen::MatrixXd H_dense;
+  Eigen::VectorXd f;
+  this->get_cost_function(ref_traj, H_dense, f);
 
   Eigen::MatrixXd A_dyn_dense, b_dyn;
   this->get_dynamics_constraint(A_dyn_dense, b_dyn);
 
-  Eigen::MatrixXd lb_dynamic, ub_dynamic; // Should be row vectors
-  this->get_state_control_bounds(initial_state, lb_dynamic, ub_dynamic);
+  Eigen::VectorXd lb_simple, ub_simple; // Should be row vectors
+  this->get_state_control_bounds(initial_state, lb_simple, ub_simple);
 
   // Cast to OSQP style QP
   Eigen::MatrixXd A_dense(A_dyn_dense.rows() + m_Nq, A_dyn_dense.cols());
@@ -182,15 +161,14 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
 
   Eigen::SparseMatrix<double> H = H_dense.sparseView();
   Eigen::SparseMatrix<double> A = A_dense.sparseView();
-  Eigen::Matrix<double, m_Nq, 1> f = f_dynamic;
 
-  Matrix<double, m_Nx_vars + m_Nq, 1> l;
-  l.block(0, 0, b_dyn.rows(), 1) = b_dyn;
-  l.block(b_dyn.rows(), 0, lb_dynamic.rows(), 1) = lb_dynamic;
+  Eigen::VectorXd l(m_Nx_vars + m_Nq);
+  l.setZero();
+  l << b_dyn, lb_simple;
 
-  Matrix<double, m_Nx_vars + m_Nq, 1> u;
-  u.block(0, 0, b_dyn.rows(), 1) = b_dyn;
-  u.block(b_dyn.rows(), 0, ub_dynamic.rows(), 1) = ub_dynamic;
+  Eigen::VectorXd u(m_Nx_vars + m_Nq);
+  u.setZero();
+  u << b_dyn, ub_simple;
 
   // Init solver if not already initialized
   if (!solver_.isInitialized()) {
@@ -201,11 +179,16 @@ void LinearMPC::solve(const Eigen::VectorXd &initial_state,
     solver_.data()->setLinearConstraintsMatrix(A);
     solver_.data()->setLowerBound(l);
     solver_.data()->setUpperBound(u);
-    solver_.initSolver();
-    solver_.settings()->setVerbosity(true);
+    #ifdef PRINT_DEBUG
+      solver_.settings()->setVerbosity(true);
+    #else
+      solver_.settings()->setVerbosity(false);
+    #endif
     solver_.settings()->setWarmStart(true);
+    solver_.settings()->setCheckTermination(10);
+    solver_.initSolver();
   }
-  else {
+  else { // Update components of QP that change from iter to iter
     solver_.updateBounds(l,u);
     solver_.updateGradient(f);
   }
