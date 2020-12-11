@@ -22,11 +22,11 @@ void serialize_signals(std::ofstream &ofs, Eigen::VectorXd var) {
 TEST(TestLinearMPC, constructor) {
   // Linear Drone example+
   // Configurable parameters
-  const int Nu = 5; // Appended gravity term
-  const int Nx = 6; // Number of states
-  const int N = 10;   // Time horizons to consider
-  const double dt = 0.1;             // Time horizon
-  const int m = 1;                   // Mass of drone
+  const int Nu = 5;      // Appended gravity term
+  const int Nx = 6;      // Number of states
+  const int N = 10;      // Time horizons to consider
+  const double dt = 0.1; // Time horizon
+  const int m = 1;       // Mass of drone
 
   // Weights on state deviation and control input
   Eigen::MatrixXd Qx(Nx, Nx);
@@ -75,7 +75,7 @@ TEST(TestLinearMPC, constructor) {
   // Initial state
   Eigen::VectorXd x0 = ref_traj.col(0);
 
-  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds,N);
+  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds, N);
 
   // Test Cost Function
   Eigen::MatrixXd H;
@@ -105,7 +105,6 @@ TEST(TestLinearMPC, constructor) {
   // Test extracting solution
   Eigen::MatrixXd first_control;
   Eigen::MatrixXd opt_traj;
-<<<<<<< HEAD
   mpc.get_output(x_out, first_control, opt_traj);
 
   // Expected output
@@ -124,9 +123,6 @@ TEST(TestLinearMPC, constructor) {
       1.48527, 1.37058, 1.10641, 0.660112, -0.0173789, -0.957193;
 
   EXPECT_TRUE(opt_traj_expect.isApprox(opt_traj, 1e-5));
-=======
-  mpc.get_output(x_out,first_control,opt_traj);
->>>>>>> upstream/devel/cpp
 }
 
 // Run all the tests that were declared with TEST()
