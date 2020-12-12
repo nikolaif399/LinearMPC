@@ -3,7 +3,7 @@ addpath('../../qpOASES/interfaces/matlab')
 addpath('../../osqp-matlab')
 
 N = 10;
-dt = 0.1;
+dt = 0.01;
 dt_attitude = 0.004; % Attitude controller update rate
 
 % System parameters
@@ -13,37 +13,29 @@ k_cmd = 1;
 tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([10 10 1000 1 1 1 10 10]);
+Qx = diag([100 100 1 100]);
 Qn = 10*Qx;
-Ru = diag([0.01 0.01 0.001 0]);
+Ru = diag([1]);
 
 % Bounds on states and controls
-xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -pi/6;-pi/6];
-xmax = [inf; inf; inf;inf;inf;inf; pi/6; pi/6];
-umin = [-pi/2;-pi/2; 0.5*params.m*params.g;1];
-umax = [pi/2; pi/2; 2*params.m*params.g; 1];
+xmin = [-inf;-inf;-inf;-inf];
+xmax = [inf; inf; inf;inf];
+umin = [-20];
+umax = [20];
 
 stateBounds = [xmin xmax];
 controlBounds = [umin umax];
 
 % Linearized dynamics
-Ad = [1 0 0 dt 0  0  0  dt^2*params.g/2;
-      0 1 0 0  dt 0 -dt^2*params.g/2  0;
-      0 0 1 0  0  dt 0  0;
-      0 0 0 1  0  0  0  dt*params.g;
-      0 0 0 0  1  0  -dt*params.g 0;
-      0 0 0 0  0  1  0  0;
-      0 0 0 0  0  0  1-dt/tau  0;
-      0 0 0 0  0  0  0  1-dt/tau];
+Ad = [0, 0, 1, 0;...
+      0, 0, 0, 1;...
+      0, -171.8039, 0, 0;...
+      0, 24.3626, 0,0];
   
-Bd = [0 0 0 0;
-      0 0 0 0;
-      0 0 dt^2/(2*params.m) -dt^2*params.g/2;
-      0 0 0 0;
-      0 0 0 0;
-      0 0 dt/params.m -params.g*dt;
-      k_cmd*dt/tau 0  0  0;
-      0 k_cmd*dt/tau  0  0];
+Bd = [0;
+      0;
+      5.0686;
+      -0.4913];
 
 % Setup MPC object
 %mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
@@ -51,7 +43,7 @@ mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 
 % Reference Trajectory Generation
-refTraj = generateReference('rising_spiral',dt);
+refTraj = generateReference('sinusoidal',dt);
 N_traj = size(refTraj,2);
 
 qCur = refTraj(:,1);
