@@ -3,8 +3,8 @@ addpath('../../qpOASES/interfaces/matlab')
 addpath('../../osqp-matlab')
 
 N = 20;
-dt_control = 0.05;
-dt_inner = 0.01;
+dt_control = 0.01;
+dt_inner = 0.001;
 g = 9.81;
 mcart = 0.493;
 mpend = 0.312;
@@ -73,9 +73,11 @@ while(step < N_traj)
     end
     
     % Collect MPC Control (roll,pitch,thrust commands, all in world frame)
-    tic
+    size(mpcRef)
+    N
+    Nx
     [Qout,fval] = mpc.solve(qCur,mpcRef);
-    toc
+    
     [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
     
     % Simulate with ode45

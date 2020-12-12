@@ -184,12 +184,13 @@ classdef LinearMPC < handle
                 u = [b_dyn;ub];
                 
                 if (~obj.SolverInitialized)
+                    
                     obj.Solver.setup(H, f, A, l, u, obj.qpParams);
                     obj.SolverInitialized = true;
-                else 
+                else
+ 
                     obj.Solver.update('q',f,'l',l,'u',u); % Just update reference trajectory and state bounds
                 end
-                
                 results = obj.Solver.solve();
                 xout = results.x;
                 fval = results.info.obj_val;

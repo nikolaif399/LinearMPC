@@ -2,6 +2,7 @@ close all; clc;
 addpath('../..')
 addpath('../../qpOASES/interfaces/matlab')
 addpath('../../osqp-matlab')
+addpath('../../../../ballbot_ctrl_sim/models')
 
 N = 10;
 dt = 0.01;
@@ -40,12 +41,11 @@ Acl = Ad - Bd*Klqr;
 Bcl = Bd*Klqr;
 
 % load ballbot params
-[params] = get_ballbot2D_model_params(2);
+[params] = get_ballbot2D_model_params();
 %[params] = get_shmoo_model_params(2);
-load(params);
+load model_params.mat;
 
 % Setup MPC object
-%mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
 mpc = LinearMPC(Acl,Bcl,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 
