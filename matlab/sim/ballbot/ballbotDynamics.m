@@ -3,23 +3,27 @@ function dqdt = ballbotDynamics(t,q,u,params)
 %controller
 
 % q = x, y, z, dx, dy, dz, roll, pitch
-x=q(1);y=q(2);z=q(3);
-dx=q(4);dy=q(5);dz=q(6);
-roll=q(7);pitch=q(8);
 
 % u = roll, pitch, thrust  (command, angles in world frame);
-roll_command=u(1);
-pitch_command=u(2);
-thrust_command=u(3);
 
-% Attitude controller here, update dpitch and droll
-dpitch = 100*(pitch_command - pitch);
-droll = 100*(roll_command - roll);
 
-R = rotz(0)*roty(rad2deg(pitch))*rotx(rad2deg(roll)); % roll and pitch in world frame so yaw irrelevant
-acc = [0;0;-params.g] + R*[0;0;thrust_command/params.m];
+% Linearized dynamics
+Ad = [0, 0, 1, 0;...
+      0, 0, 0, 1;...
+      0, -171.8039, 0, 0;...
+      0, 24.3626, 0,0];
+  
+Bd = [0;
+      0;
+      5.0686;
+      -0.4913];
+  
+Klqr = [-1.0000 -173.1954   -2.0268  -48.6683];
 
-dqdt = [dx;dy;dz;acc;droll;dpitch];
+error = u - q;
+u = Klqr*error;
+
+dqdt = Ad*q + Bd*u;
 
 end
 

@@ -4,24 +4,20 @@ addpath('../../osqp-matlab')
 
 N = 10;
 dt = 0.01;
-dt_attitude = 0.004; % Attitude controller update rate
+dt_attitude = 0.002; % Attitude controller update rate
 
 % System parameters
-params.g = 9.81;
-params.m = 5;
-k_cmd = 1;
-tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([100 100 1 100]);
+Qx = diag([100 1 1 100]);
 Qn = 10*Qx;
-Ru = diag([1]);
+Ru = diag([1 1 1 1]);
 
 % Bounds on states and controls
 xmin = [-inf;-inf;-inf;-inf];
 xmax = [inf; inf; inf;inf];
-umin = [-20];
-umax = [20];
+umin = [-20; -20; -20; -20];
+umax = [20; 20; 20; 20];
 
 stateBounds = [xmin xmax];
 controlBounds = [umin umax];
@@ -36,10 +32,16 @@ Bd = [0;
       0;
       5.0686;
       -0.4913];
+  
+Klqr = [-1.0000 -173.1954   -2.0268  -48.6683];
+
+Acl = Ad - Bd*Klqr;
+Bcl = Bd*Klqr;
+
 
 % Setup MPC object
 %mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
+mpc = LinearMPC(Acl,Bcl,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 
 % Reference Trajectory Generation
@@ -77,7 +79,7 @@ while(step < N_traj)
     % Simulate with ode45
     t0 = (step-1)*dt;
     tf = t0+dt;
-    [~,qNext] = ode45(@(t,q) droneDynamics(t,q,u,params),t0:dt_attitude:tf,qCur);
+    [~,qNext] = ode45(@(t,q) ballbotDynamics(t,q,u,params),t0:dt_attitude:tf,qCur);
     qCur = qNext(end,:)';
     
     % Store outputs and update step
