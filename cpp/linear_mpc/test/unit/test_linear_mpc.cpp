@@ -2,6 +2,7 @@
 #include "linear_mpc/linear_mpc.h"
 
 #include <Eigen/Dense>
+#include <fstream>
 #include <iostream>
 #include <math.h>
 
@@ -9,14 +10,23 @@
 
 const double INF = 1000000;
 
+//========================================================================================
+void serialize_signals(std::ofstream &ofs, Eigen::VectorXd var) {
+
+  for (int i = 0; i < var.size(); i++) {
+    ofs << var[i] << ",";
+  }
+  ofs << "\n";
+}
+
 TEST(TestLinearMPC, constructor) {
   // Linear Drone example+
   // Configurable parameters
-  const int Nu = 5; // Appended gravity term
-  const int Nx = 6; // Number of states
-  const int N = 10;   // Time horizons to consider
-  const double dt = 0.1;             // Time horizon
-  const int m = 1;                   // Mass of drone
+  const int Nu = 5;      // Appended gravity term
+  const int Nx = 6;      // Number of states
+  const int N = 10;      // Time horizons to consider
+  const double dt = 0.1; // Time horizon
+  const int m = 1;       // Mass of drone
 
   // Weights on state deviation and control input
   Eigen::MatrixXd Qx(Nx, Nx);
@@ -65,7 +75,7 @@ TEST(TestLinearMPC, constructor) {
   // Initial state
   Eigen::VectorXd x0 = ref_traj.col(0);
 
-  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds,N);
+  control::mpc::LinearMPC mpc(Ad, Bd, Qx, Qn, Ru, xbounds, ubounds, N);
 
   // Test Cost Function
   Eigen::MatrixXd H;
@@ -95,7 +105,24 @@ TEST(TestLinearMPC, constructor) {
   // Test extracting solution
   Eigen::MatrixXd first_control;
   Eigen::MatrixXd opt_traj;
-  mpc.get_output(x_out,first_control,opt_traj);
+  mpc.get_output(x_out, first_control, opt_traj);
+
+  // Expected output
+  Eigen::Matrix<double, Nx, N + 1> opt_traj_expect;
+  opt_traj_expect.row(0) << 1, 1, 0.846614, 0.539702, 0.0791166, -0.272055,
+      -0.469205, -0.512353, -0.401526, -0.136747, 0.120345;
+  opt_traj_expect.row(1) << -1.04253e-07, -2.30047e-07, 0.153928, 0.373809,
+      0.439772, 0.351829, 0.109976, -0.238516, -0.568924, -0.809883, -0.941784;
+  opt_traj_expect.row(2) << -3.9392e-07, -1.09946e-06, 0.0758745, 0.194776,
+      0.333952, 0.48039, 0.628918, 0.765976, 0.876618, 0.942629, 0.940891;
+  opt_traj_expect.row(3) << 6.78385e-06, -1.5339, -3.06913, -4.60586, -3.51173,
+      -1.9715, -0.431493, 1.10827, 2.64779, 2.57092, 1.03125;
+  opt_traj_expect.row(4) << -2.15308e-07, 1.53928, 2.19881, 0.659634, -0.879432,
+      -2.41853, -3.48492, -3.30409, -2.40959, -1.31901, -0.234775;
+  opt_traj_expect.row(5) << -3.09856e-06, 0.75876, 1.18902, 1.39176, 1.46439,
+      1.48527, 1.37058, 1.10641, 0.660112, -0.0173789, -0.957193;
+
+  EXPECT_TRUE(opt_traj_expect.isApprox(opt_traj, 1e-5));
 }
 
 // Run all the tests that were declared with TEST()
