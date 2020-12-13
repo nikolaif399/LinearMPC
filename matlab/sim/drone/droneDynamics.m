@@ -17,7 +17,7 @@ dpitch = 100*(pitch_command - pitch);
 droll = 100*(roll_command - roll);
 
 omega = 1;
-acc_noise = [1; -1; 1]*max(sin(omega*t),0);
+acc_noise = [0; -0; 0]*max(sin(omega*t),0);
 
 R = rotz(0)*roty(rad2deg(pitch))*rotx(rad2deg(roll)); % roll and pitch in world frame so yaw irrelevant
 acc = [0;0;-params.g] + R*[0;0;thrust_command/params.m] + acc_noise;
