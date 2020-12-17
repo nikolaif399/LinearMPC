@@ -1,10 +1,10 @@
 addpath('../..')
 addpath('../../qpOASES/interfaces/matlab')
-addpath('../../osqp-matlab')
+% addpath('../../osqp-matlab')
 
-N = 10;
-dt = 0.1;
-dt_attitude = 0.004; % Attitude controller update rate
+N = 5;
+dt = 0.04;
+dt_attitude = 0.005; % Attitude controller update rate
 
 % System parameters
 params.g = 9.81;
@@ -13,15 +13,16 @@ k_cmd = 1;
 tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([10 10 1000 1 1 1 10 10]);
-Qn = 10*Qx;
-Ru = diag([0.01 0.01 0.001 0]);
+Qx = diag([1 1 100 0.1 0.1 0.1 0.1 0.1]); % {x, y, z, xdot, ydot, zdot, roll, pitch}
+Qn = 15*Qx; 
+Ru = diag([0.3 0.3 0.02 0]); % {roll, pitch, thrust, 0}
 
 % Bounds on states and controls
-xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -pi/6;-pi/6];
-xmax = [inf; inf; inf;inf;inf;inf; pi/6; pi/6];
-umin = [-pi/2;-pi/2; 0.5*params.m*params.g;1];
-umax = [pi/2; pi/2; 2*params.m*params.g; 1];
+angle_lim = 20*pi/180;
+xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -angle_lim;-angle_lim];
+xmax = [inf; inf; inf;inf;inf;inf; angle_lim; angle_lim];
+umin = [-angle_lim;-angle_lim; 0.5*params.g;1];
+umax = [angle_lim; angle_lim; 1.5*params.g; 1];
 
 stateBounds = [xmin xmax];
 controlBounds = [umin umax];
@@ -38,20 +39,20 @@ Ad = [1 0 0 dt 0  0  0  dt^2*params.g/2;
   
 Bd = [0 0 0 0;
       0 0 0 0;
-      0 0 dt^2/(2*params.m) -dt^2*params.g/2;
+      0 0 dt^2/2 -dt^2*params.g/2;
       0 0 0 0;
       0 0 0 0;
-      0 0 dt/params.m -params.g*dt;
+      0 0 dt -params.g*dt;
       k_cmd*dt/tau 0  0  0;
       0 k_cmd*dt/tau  0  0];
 
 % Setup MPC object
-%mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
+% mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 
 % Reference Trajectory Generation
-refTraj = generateReference('rising_spiral',dt);
+refTraj = generateReference('straight',dt);% {straight, rising_spiral}
 N_traj = size(refTraj,2);
 
 qCur = refTraj(:,1);
@@ -60,6 +61,7 @@ qCache = {};
 optCache = {};
 
 % Simulate
+u_arr = [];
 step = 1;
 while(step < N_traj)
     tic
@@ -81,6 +83,7 @@ while(step < N_traj)
     [Qout,fval] = mpc.solve(qCur,mpcRef);
     toc
     [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
+    u_arr = [u_arr, u];
     
     % Simulate with ode45
     t0 = (step-1)*dt;
@@ -97,4 +100,14 @@ end
 
 plotTrajectory(qCache,optCache,refTraj,dt,false)
 
-
+% plot MPC outputs
+figure(2)
+subplot(3,1,1)
+plot( u_arr(1,:) )
+ylabel('Roll')
+subplot(3,1,2)
+plot(u_arr(2,:))
+ylabel('Pitch')
+subplot(3,1,3)
+plot(u_arr(3,:))
+ylabel('Thrust')

@@ -14,7 +14,7 @@ if strcmp(name,'rising_spiral')
 
     refTraj = [xref;yref;zref;dxref;dyref;dzref;rollref;pitchref];    
 elseif strcmp(name,'straight')
-    xref = [(0:0.1:5), (5:-0.1:0)];
+    xref = [(0:0.05:10), (10:-0.05:0)];
     yref = zeros(size(xref));
     zref = zeros(size(xref));
     rollref = zeros(size(zref));
