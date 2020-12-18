@@ -2,9 +2,9 @@ addpath('../..')
 addpath('../../qpOASES/interfaces/matlab')
 % addpath('../../osqp-matlab')
 
-N = 5;
+N = 10;
 dt = 0.04;
-dt_attitude = 0.005; % Attitude controller update rate
+dt_attitude = 0.0025; % Attitude controller update rate
 
 % System parameters
 params.g = 9.81;
@@ -13,15 +13,15 @@ k_cmd = 1;
 tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([1 1 100 0.1 0.1 0.1 0.1 0.1]); % {x, y, z, xdot, ydot, zdot, roll, pitch}
-Qn = 15*Qx; 
-Ru = diag([0.3 0.3 0.02 0]); % {roll, pitch, thrust, 0}
+Qx = diag([5 5 100 5 5 10 1 1]); % {x, y, z, xdot, ydot, zdot, roll, pitch}
+Qn = 10*Qx; 
+Ru = diag([10 10 0.2 0]); % {roll, pitch, thrust, 0}
 
 % Bounds on states and controls
 angle_lim = 20*pi/180;
 xmin = [-inf;-inf;-inf;-inf;-inf;-inf; -angle_lim;-angle_lim];
 xmax = [inf; inf; inf;inf;inf;inf; angle_lim; angle_lim];
-umin = [-angle_lim;-angle_lim; 0.5*params.g;1];
+umin = [-angle_lim;-angle_lim; 0.2*params.g;1];
 umax = [angle_lim; angle_lim; 1.5*params.g; 1];
 
 stateBounds = [xmin xmax];
