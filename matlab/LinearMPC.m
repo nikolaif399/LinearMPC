@@ -131,7 +131,7 @@ classdef LinearMPC < handle
             
         end
         
-        function [u0,optTraj] = getOutput(obj,xout)
+        function [u0,optTraj,uTraj] = getOutput(obj,xout)
             % Collect first control value and all states
             optTraj = zeros(obj.Nx,obj.N+1);
             
@@ -141,14 +141,17 @@ classdef LinearMPC < handle
             end
             
             u0 = zeros(obj.Nu,1);
-
             ustart = xend;
             for i = 1:obj.Nu
                 u0(i,:) = xout(ustart+i);
             end
+            
+            uTraj = zeros(obj.Nu,obj.N);
+            for i = 1:obj.Nu
+                uTraj(i,:) = xout(ustart+i:obj.Nu:end);
+            end
         end
             
-       
         function [xout,fval] = solve(obj,initialState, refTraj)
             [H,f] = obj.getCostFunction(refTraj);
             
