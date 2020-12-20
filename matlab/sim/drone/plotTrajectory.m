@@ -14,11 +14,19 @@ end
 figure(1)
 h1 = gca;
 
+xs = [];
+ys = [];
+zs = [];
+
 for i = 1:N
     tic
     if record
         writeVideo(v,getframe(gcf));
     end
+    
+    xs = [xs qCache{i}(1)];
+    ys = [ys qCache{i}(2)];
+    zs = [zs qCache{i}(3)];
     
     % Collect relevant cached data for this timestep
     optCur = optCache{i};
@@ -28,7 +36,9 @@ for i = 1:N
     cla(h1);
     plot3(h1, refTraj(1,:),refTraj(2,:),refTraj(3,:),'b')
     hold on
+    plot3(h1,xs,ys,zs,'r');
     plot3(h1, optCur(1,:),optCur(2,:),optCur(3,:), 'g-')
+    scatter3(h1, refTraj(1,i), refTraj(2,i), refTraj(3,i), 'c*')
     plotQuad(h1,qCur);
     title('Drone Trajectory')
     

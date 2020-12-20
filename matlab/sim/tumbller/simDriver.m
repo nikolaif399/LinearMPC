@@ -13,45 +13,48 @@ l = 0.04;
 f = 0.01;
 
 % Weights on state deviation and control input
-Qx = diag([100 100 10 10]);
-Qn = 10*Qx;
-Ru = 1;
+Q = diag([1000 0.1 3 0.1]);
+Qn = 10*Q;
+Ru = 0.1;
 
 % Bounds on states and controls
-xmin = [-inf;-inf;-pi/4;-inf];
-xmax = [inf; inf; pi/4;inf];
-umin = -10;
-umax = 10;
+xmin = [-inf;-1;-pi/2;-inf];
+xmax = [inf; 1; pi/2;inf];
+umin = -1;
+umax = 1;
 
 stateBounds = [xmin xmax];
 controlBounds = [umin umax];
 
 % Linearized dynamics
-denom = Ipend*(mcart*mpend) + mcart*mpend*l^2;
+denom = Ipend*(mcart+mpend) + mcart*mpend*l^2;
 A = [0 1 0 0;
       0 -(Ipend+mpend*l^2)*f/denom mpend^2*g*l^2/denom 0;
       0 0 0 1;
-      0 -mpend*l*f/denom mpend*g*l*(mcart*mpend)/denom 0];
+      0 -mpend*l*f/denom mpend*g*l*(mcart+mpend)/denom 0];
   
 B = [0; Ipend+mpend*l^2/denom;0;mpend*l/denom];
 
-Ad = expm(A*dt_control);
-Bd = expm(A*dt_control - eye(size(A)))*pinv(A)*B;
+sys = ss(A,B,eye(size(A)),zeros(4,1));
+sysd = c2d(sys,dt_control,'tustin');
+
+Ad = sysd.A;%expm(A*dt_control);
+Bd = sysd.B;%expm(A*dt_control - eye(size(A)))*pinv(A)*B;
 
 params.A = A;
 params.B = B;
 
 % Setup MPC object
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
+mpc = LinearMPC(Ad,Bd,Q,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 % Reference Trajectory Generation
-ts = 1:200;
-refTraj = [0.3*sin(0.1*ts);zeros(3,length(ts))];
+ts = 0:dt_control:8;
+refTraj = zeros(4,length(ts));
+refTraj(1,:) = 0.3*sin(0.8*ts);
 
 N_traj = size(refTraj,2);
 
-qCur = refTraj(:,1);
-%qCur = [0.1;0;0;0];
+qCur = [0 0 0 0]';
 
 qCache = {};
 optCache = {};
@@ -72,13 +75,11 @@ while(step < N_traj)
         mpcRef = [mpcRef, repmat(lastState,1,N+1-size(mpcRef,2))];
     end
     
-    % Collect MPC Control (roll,pitch,thrust commands, all in world frame)
-    size(mpcRef)
-    N
-    Nx
+    % Collect MPC Control
+    tic
     [Qout,fval] = mpc.solve(qCur,mpcRef);
-    
-    [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
+    toc
+    [u,optTraj,uTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
     
     % Simulate with ode45
     t0 = (step-1)*dt_control;
@@ -93,6 +94,6 @@ while(step < N_traj)
     
 end
 
-plotTrajectory(qCache,optCache,refTraj,dt_control,false)
+plotTrajectory(qCache,optCache,refTraj,dt_control,true)
 
 

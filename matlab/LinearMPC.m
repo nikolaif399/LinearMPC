@@ -98,6 +98,7 @@ classdef LinearMPC < handle
 
             H = blkdiag(Hq,Hqn,Hu);
             y = ref_traj(:);
+            
             fx = y'*blkdiag(kron(eye(obj.N),obj.Q),obj.Qn);
             fu = zeros(obj.N*obj.Nu,1);
             f = -[fx';fu];

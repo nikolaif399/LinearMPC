@@ -30,11 +30,14 @@ for i = 1:N
     height = 0.16;
     
     hold on
-    plot(qCur(1)+[0,height*sin(qCur(3))],[0,height*cos(qCur(3))],'r')
+    plot(qCur(1)+[0,-height*sin(qCur(3))],[0,height*cos(qCur(3))],'r')
     plot([-2.2 2.2],[0 0],'k')
+    plot(refTraj(1,i),0,'c*')
     xlim([-0.5 0.5])
     ylim([-0.2 0.8])
     grid on
+    
+    legend('Tumbller','Ground plane','Reference Point')
     
     % Display in realtime
     tsleep = dt - toc;

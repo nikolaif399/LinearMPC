@@ -1,8 +1,8 @@
 addpath('../..')
 addpath('../../qpOASES/interfaces/matlab')
-% addpath('../../osqp-matlab')
+addpath('../../osqp-matlab')
 
-N = 10;
+N = 20;
 dt = 0.04;
 dt_attitude = 0.0025; % Attitude controller update rate
 
@@ -13,7 +13,7 @@ k_cmd = 1;
 tau = 1/10;
 
 % Weights on state deviation and control input
-Qx = diag([5 5 100 5 5 10 1 1]); % {x, y, z, xdot, ydot, zdot, roll, pitch}
+Qx = diag([20 20 100 5 5 10 1 1]); % {x, y, z, xdot, ydot, zdot, roll, pitch}
 Qn = 10*Qx; 
 Ru = diag([10 10 0.2 0]); % {roll, pitch, thrust, 0}
 
@@ -47,12 +47,10 @@ Bd = [0 0 0 0;
       0 k_cmd*dt/tau  0  0];
 
 % Setup MPC object
-mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','quadprog');
-% mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
-
+mpc = LinearMPC(Ad,Bd,Qx,Qn,Ru,stateBounds,controlBounds,N,'Solver','osqp');
 
 % Reference Trajectory Generation
-refTraj = generateReference('straight',dt);% {straight, rising_spiral}
+refTraj = generateReference('sawtooth_vertical',dt);% {straight, rising_spiral}
 N_traj = size(refTraj,2);
 
 qCur = refTraj(:,1);
@@ -82,7 +80,7 @@ while(step < N_traj)
     tic
     [Qout,fval] = mpc.solve(qCur,mpcRef);
     toc
-    [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimzied state traj 
+    [u,optTraj] = mpc.getOutput(Qout); % Collect first control, optimized state traj 
     u_arr = [u_arr, u];
     
     % Simulate with ode45
@@ -102,12 +100,12 @@ plotTrajectory(qCache,optCache,refTraj,dt,false)
 
 % plot MPC outputs
 figure(2)
-subplot(3,1,1)
+subplot(1,3,1)
 plot( u_arr(1,:) )
 ylabel('Roll')
-subplot(3,1,2)
+subplot(1,3,2)
 plot(u_arr(2,:))
 ylabel('Pitch')
-subplot(3,1,3)
+subplot(1,3,3)
 plot(u_arr(3,:))
 ylabel('Thrust')

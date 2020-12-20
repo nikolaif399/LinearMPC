@@ -25,7 +25,7 @@ gyroMeask = 0.0;
 
 dt = 0.004;
 time = 0.0;
-dataStore = zeros(5010, 7);
+dataStore = [];
 
 angleRollk1 = 0.0;
 angleRollk = 0.0;
@@ -45,7 +45,7 @@ Q = [0.002^2 0 0 0];
 H = [1 0];
 
 % Create a simulation at 250 Hz
-endPoint = 2500;
+endPoint = 250000;
 for i = 1:endPoint
     
     rollVelTrue = 0.0;
